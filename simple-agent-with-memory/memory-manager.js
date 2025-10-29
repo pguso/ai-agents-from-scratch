@@ -1,9 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export class MemoryManager {
-    constructor(memoryFilePath = './memory.json') {
-        this.memoryFilePath = memoryFilePath;
+    constructor(memoryFileName = './memory.json') {
+        this.memoryFilePath = path.resolve(__dirname, memoryFileName);
     }
 
     // Load memories from the JSON file
