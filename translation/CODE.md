@@ -7,15 +7,12 @@ This file demonstrates how to use **system prompts** to specialize an AI agent f
 ### 1. Import Required Modules
 ```javascript
 import {
-    getLlama, resolveModelFile, LlamaChatSession,
-    HarmonyChatWrapper
+  getLlama, LlamaChatSession,
 } from "node-llama-cpp";
 import {fileURLToPath} from "url";
 import path from "path";
 ```
-- **HarmonyChatWrapper**: A chat format wrapper for models that use the Harmony format
-- **resolveModelFile**: Helper for resolving model file paths (imported but not used here)
-- Other imports are the same as the intro example
+- Imports are the same as the intro example
 
 ### 2. Initialize and Load Model
 ```javascript
@@ -31,21 +28,32 @@ const model = await llama.loadModel({
     )
 });
 ```
-- Uses **Apertus-8B**: A larger model (8 billion parameters) than intro.js
-- **Q6_K**: 6-bit quantization (better quality than Q8 but larger file size)
-- Larger models typically have better understanding and output quality
+
+#### Why Apertus-8B?
+Apertus-8B is a multilingual language model specifically trained to support over 1,000 languages, with 40% of its training data in non-English languages. This makes it an excellent choice for translation tasks because:
+
+1. **Massive Multilingual Coverage**: The model was trained on 15 trillion tokens across 1,811 natively supported languages, including underrepresented languages like Swiss German and Romansh
+2. **Larger Size**: With 8 billion parameters, it's larger than the intro.js example, providing better understanding and output quality
+3. **Translation-Focused Training**: The model was explicitly designed for applications including translation systems
+4. **Q6_K Quantization**: 6-bit quantization provides a good balance between quality and file size
+
+**Experiment suggestion**: Try swapping this model with others to compare translation quality! For example:
+- Use a smaller 3B model to see how size affects translation accuracy
+- Use a monolingual model to demonstrate why multilingual training matters
+- Use a general-purpose model without translation-specific training
+
+Read more about Apertus [arXiv](https://arxiv.org/abs/2509.14233)
 
 ### 3. Create Context and Chat Session with System Prompt
 ```javascript
 const context = await model.createContext();
 const session = new LlamaChatSession({
     contextSequence: context.getSequence(),
-    chatWrapper: new HarmonyChatWrapper(),
     systemPrompt: `Du bist ein erfahrener wissenschaftlicher Übersetzer...`
 });
 ```
 
-**Key difference from intro.js**: The **systemPrompt** parameter!
+**Key difference from intro.js**: The **systemPrompt**!
 
 #### What is a System Prompt?
 The system prompt defines the agent's role, behavior, and rules. It's like giving the AI a job description:
@@ -183,14 +191,6 @@ I hope this helps! Let me know if you need anything else.
 AI: [German text only]
 ```
 
-### 4. Chat Wrappers
-```javascript
-chatWrapper: new HarmonyChatWrapper()
-```
-- Different models use different conversation formats
-- Chat wrappers handle the formatting automatically
-- HarmonyChatWrapper is for models trained with the Harmony format
-
 ## What Makes This an "Agent"?
 
 This is a **specialized agent** because:
@@ -205,7 +205,27 @@ This is a **specialized agent** because:
 When run, you'll see a German translation of the English abstract, following all the rules:
 - Proper German scientific style
 - Correct technical terminology
-- German number formatting
+- German number formatting (e.g., "54 %")
 - No extra commentary
 
 The quality depends on the model's training and size.
+
+## Experimentation Ideas
+
+1. **Try different models**:
+  - Swap Apertus-8B with a smaller model (3B) to see size impact
+  - Try a monolingual English model to demonstrate the importance of multilingual training
+  - Use models with different quantization levels (Q4, Q6, Q8) to compare quality vs. size
+
+2. **Modify the system prompt**:
+  - Remove specific rules one by one to see their impact
+  - Change the translation target language
+  - Adjust the style (formal vs. casual)
+
+3. **Test with different content**:
+  - Technical documentation
+  - Creative writing
+  - Business communications
+  - Simple vs. complex sentences
+
+Each experiment will help you understand how system prompts, model selection, and prompt engineering work together to create effective AI agents.

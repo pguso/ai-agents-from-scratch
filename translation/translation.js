@@ -1,6 +1,6 @@
 import {
-    getLlama, resolveModelFile, LlamaChatSession,
-    HarmonyChatWrapper
+    getLlama,
+    LlamaChatSession,
 } from "node-llama-cpp";
 import {fileURLToPath} from "url";
 import path from "path";
@@ -20,7 +20,6 @@ const model = await llama.loadModel({
 const context = await model.createContext();
 const session = new LlamaChatSession({
     contextSequence: context.getSequence(),
-    chatWrapper: new HarmonyChatWrapper(),
     systemPrompt: `Du bist ein erfahrener wissenschaftlicher Übersetzer für technische Texte aus dem Englischen ins 
     Deutsche.
     

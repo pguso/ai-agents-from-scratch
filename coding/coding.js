@@ -1,5 +1,6 @@
 import {
     getLlama,
+    HarmonyChatWrapper,
     LlamaChatSession,
 } from "node-llama-cpp";
 import {fileURLToPath} from "url";
@@ -18,6 +19,7 @@ const model = await llama.loadModel({
 });
 const context = await model.createContext();
 const session = new LlamaChatSession({
+    chatWrapper: new HarmonyChatWrapper(),
     contextSequence: context.getSequence(),
 });
 
