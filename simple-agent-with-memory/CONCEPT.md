@@ -73,20 +73,30 @@ Available in future sessions
 **Facts**: General information
 ```json
 {
-  "facts": [
-    {"content": "User's name is Alex", "timestamp": "..."},
-    {"content": "User lives in Paris", "timestamp": "..."}
+  "memories": [
+    {
+      "type": "fact",
+      "key": "user_name",
+      "value": "Alex",
+      "source": "user",
+      "timestamp": "2025-10-29T11:22:57.372Z"
+    }
   ]
 }
 ```
 
-**Preferences**: Key-value pairs
+**Preferences**: 
 ```json
 {
-  "preferences": {
-    "favorite_color": "blue",
-    "favorite_food": "pizza"
-  }
+  "memories": [
+    {
+      "type": "preference",
+      "key": "favorite_food",
+      "value": "pizza",
+      "source": "user",
+      "timestamp": "2025-10-29T11:22:58.022Z"
+    }
+  ]
 }
 ```
 
@@ -98,7 +108,7 @@ Base Prompt:
 "You are a helpful assistant."
 
 Enhanced with Memory:
-"You are a helpful assistant.
+"You are a helpful assistant with long-term memory.
 
 === LONG-TERM MEMORY ===
 Known Facts:

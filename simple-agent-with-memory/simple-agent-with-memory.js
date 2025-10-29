@@ -17,11 +17,30 @@ const memoryManager = new MemoryManager('./agent-memory.json');
 // Load existing memories and add to system prompt
 const memorySummary = await memoryManager.getMemorySummary();
 
-const systemPrompt = `You are a helpful assistant with long-term memory.
-${memorySummary}
+const systemPrompt = `
+You are a helpful assistant with long-term memory.
 
-When the user shares important information about themselves, their preferences, or facts 
-they want you to remember, use the saveMemory function to store it.`;
+Before calling any function, always follow this reasoning process:
+
+1. **Compare** new user statements against existing memories below.
+2. **If the same key and value already exist**, do NOT call saveMemory again.
+   - Instead, simply acknowledge the known information.
+   - Example: if the user says "My name is Malua" and memory already says "user_name: Malua", reply "Yes, I remember your name is Malua."
+3. **If the user provides an updated value** (e.g., "I actually prefer sushi now"), 
+   then call saveMemory once to update the value.
+4. **Only call saveMemory for genuinely new information.**
+
+When saving new data, call saveMemory with structured fields:
+- type: "fact" or "preference"
+- key: short descriptive identifier (e.g., "user_name", "favorite_food")
+- value: the specific information (e.g., "Malua", "chinua")
+
+Examples:
+saveMemory({ type: "fact", key: "user_name", value: "Malua" })
+saveMemory({ type: "preference", key: "favorite_food", value: "chinua" })
+
+${memorySummary}
+`;
 
 const session = new LlamaChatSession({
     contextSequence: context.getSequence(),
@@ -36,29 +55,16 @@ const saveMemory = defineChatSessionFunction({
         properties: {
             type: {
                 type: "string",
-                enum: ["fact", "preference"],
-                description: "Type of memory to save"
+                enum: ["fact", "preference"]
             },
-            content: {
-                type: "string",
-                description: "The information to remember"
-            },
-            key: {
-                type: "string",
-                description: "For preferences: the preference key (e.g., 'favorite_color')"
-            }
+            key: { type: "string" },
+            value: { type: "string" }
         },
-        required: ["type", "content"]
+        required: ["type", "key", "value"]
     },
-    async handler(params) {
-        if (params.type === "fact") {
-            await memoryManager.addFact(params.content);
-            return "Fact saved to memory";
-        } else if (params.type === "preference") {
-            const key = params.key || params.content.split(' ')[0];
-            await memoryManager.addPreference(key, params.content);
-            return "Preference saved to memory";
-        }
+    async handler({ type, key, value }) {
+        await memoryManager.addMemory({ type, key, value });
+        return `Memory saved: ${key} = ${value}`;
     }
 });
 
