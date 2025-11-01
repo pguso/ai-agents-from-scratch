@@ -2,6 +2,13 @@ import {defineChatSessionFunction, getLlama, LlamaChatSession} from "node-llama-
 import {fileURLToPath} from "url";
 import path from "path";
 import {PromptDebugger} from "../helper/prompt-debugger.js";
+import retryWithBackoff from "../utils/retry.js";
+
+// Retry config for this file
+const RETRIES = 3;
+const DELAY = 200;
+const FACTOR = 2;
+const JITTER = true;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const debug = false;
@@ -41,8 +48,13 @@ const getCurrentTime = defineChatSessionFunction({
 const functions = {getCurrentTime};
 const prompt = `What time is it right now?`;
 
-// Execute the prompt
-const a1 = await session.prompt(prompt, {functions});
+// Execute the prompt (with retry/backoff)
+const a1 = await retryWithBackoff(() => session.prompt(prompt, {functions}), {
+    retries: RETRIES,
+    delay: DELAY,
+    factor: FACTOR,
+    jitter: JITTER,
+});
 console.log("AI: " + a1);
 
 // Debug after the prompt execution

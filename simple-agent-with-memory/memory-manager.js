@@ -4,6 +4,12 @@ import {fileURLToPath} from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Retry defaults for memory manager IO operations
+const RETRIES = 4;
+const DELAY = 100;
+const FACTOR = 2;
+const JITTER = true;
+
 export class MemoryManager {
     constructor(memoryFileName = './memory.json') {
         this.memoryFilePath = path.resolve(__dirname, memoryFileName);
@@ -56,7 +62,16 @@ export class MemoryManager {
     }
 
     async saveMemories(memories) {
-        await fs.writeFile(this.memoryFilePath, JSON.stringify(memories, null, 2));
+        // Use retry/backoff around disk writes to be resilient to transient IO errors
+        // import lazily to avoid circular deps when this module is imported elsewhere
+        const { default: retryWithBackoff } = await import('../utils/retry.js');
+        await retryWithBackoff(() => fs.writeFile(this.memoryFilePath, JSON.stringify(memories, null, 2)), {
+            retries: RETRIES,
+            delay: DELAY,
+            factor: FACTOR,
+            jitter: JITTER,
+            shouldRetry: (err) => true
+        });
     }
 
     // Add or update memory without duplicates

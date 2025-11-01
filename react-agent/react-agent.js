@@ -2,6 +2,12 @@ import {defineChatSessionFunction, getLlama, LlamaChatSession} from "node-llama-
 import {fileURLToPath} from "url";
 import path from "path";
 import {PromptDebugger} from "../helper/prompt-debugger.js";
+import retryWithBackoff from "../utils/retry.js";
+// Retry configuration for this module
+const RETRIES = 3;
+const DELAY = 200;
+const FACTOR = 2;
+const JITTER = true;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const debug = false;
@@ -175,7 +181,7 @@ async function reactAgent(userPrompt, maxIterations = 10) {
 
         // Prompt with onTextChunk to capture streaming output
         let currentChunk = "";
-        const response = await session.prompt(
+        const response = await retryWithBackoff(() => session.prompt(
             iteration === 1 ? userPrompt : "Continue your reasoning. What's the next step?",
             {
                 functions,
@@ -186,7 +192,12 @@ async function reactAgent(userPrompt, maxIterations = 10) {
                     currentChunk += chunk;
                 }
             }
-        );
+        ), {
+            retries: RETRIES,
+            delay: DELAY,
+            factor: FACTOR,
+            jitter: JITTER
+        });
 
         console.log(); // New line after streaming
 

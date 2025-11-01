@@ -2,6 +2,12 @@ import {defineChatSessionFunction, getLlama, LlamaChatSession} from "node-llama-
 import {fileURLToPath} from "url";
 import path from "path";
 import {MemoryManager} from "./memory-manager.js";
+import retryWithBackoff from "../utils/retry.js";
+// Retry config for this file
+const RETRIES = 4;
+const DELAY = 200;
+const FACTOR = 2;
+const JITTER = true;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,12 +78,22 @@ const functions = {saveMemory};
 
 // Example conversation
 const prompt1 = "Hi! My name is Alex and I love pizza.";
-const response1 = await session.prompt(prompt1, {functions});
+const response1 = await retryWithBackoff(() => session.prompt(prompt1, {functions}), {
+    retries: RETRIES,
+    delay: DELAY,
+    factor: FACTOR,
+    jitter: JITTER
+});
 console.log("AI: " + response1);
 
 // Later conversation (even after restarting the script)
 const prompt2 = "What's my favorite food?";
-const response2 = await session.prompt(prompt2, {functions});
+const response2 = await retryWithBackoff(() => session.prompt(prompt2, {functions}), {
+    retries: RETRIES,
+    delay: DELAY,
+    factor: FACTOR,
+    jitter: JITTER
+});
 console.log("AI: " + response2);
 
 // Clean up

@@ -15,6 +15,12 @@ const modelPath = path.join(
     "DeepSeek-R1-0528-Qwen3-8B-Q6_K.gguf"
 )
 
+// Retry config for this file's parallel prompts
+const RETRIES = 3;
+const DELAY = 150;
+const FACTOR = 2;
+const JITTER = true;
+
 const llama = await getLlama();
 const model = await llama.loadModel({modelPath});
 const context = await model.createContext({
@@ -39,8 +45,15 @@ const [
     a1,
     a2
 ] = await Promise.all([
-    session1.prompt(q1),
-    session2.prompt(q2)
+    // Wrap prompts with retry/backoff to tolerate transient failures
+    (async () => {
+        const { default: retryWithBackoff } = await import('../utils/retry.js');
+        return await retryWithBackoff(() => session1.prompt(q1), { retries: RETRIES, delay: DELAY, factor: FACTOR, jitter: JITTER });
+    })(),
+    (async () => {
+        const { default: retryWithBackoff } = await import('../utils/retry.js');
+        return await retryWithBackoff(() => session2.prompt(q2), { retries: RETRIES, delay: DELAY, factor: FACTOR, jitter: JITTER });
+    })()
 ]);
 
 console.log("User: " + q1);
