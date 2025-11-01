@@ -4,6 +4,13 @@ import {
 } from "node-llama-cpp";
 import {fileURLToPath} from "url";
 import path from "path";
+import retryWithBackoff from "../utils/retry.js";
+
+// Retry options for this module
+const RETRIES = 4;
+const DELAY = 200;
+const FACTOR = 2;
+const JITTER = true;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -14,7 +21,7 @@ const model = await llama.loadModel({
         __dirname,
         "../",
         "models",
-        "Qwen3-1.7B-Q8_0.gguf"
+        "hf_Qwen_Qwen3-1.7B.Q8_0.gguf"
     )
 });
 
@@ -25,7 +32,13 @@ const session = new LlamaChatSession({
 
 const prompt = `do you know node-llama-cpp`;
 
-const a1 = await session.prompt(prompt);
+const a1 = await retryWithBackoff(() => session.prompt(prompt), {
+    retries: RETRIES,
+    delay: DELAY,
+    factor: FACTOR,
+    jitter: JITTER,
+    shouldRetry: (err) => true
+});
 console.log("AI: " + a1);
 
 

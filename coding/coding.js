@@ -5,6 +5,12 @@ import {
 } from "node-llama-cpp";
 import {fileURLToPath} from "url";
 import path from "path";
+import retryWithBackoff from "../utils/retry.js";
+// Retry settings for this file
+const RETRIES = 3;
+const DELAY = 200;
+const FACTOR = 2;
+const JITTER = true;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,7 +33,7 @@ const q1 = `What is hoisting in JavaScript? Explain with examples.`;
 
 console.log('context.contextSize', context.contextSize)
 
-const a1 = await session.prompt(q1, {
+const a1 = await retryWithBackoff(() => session.prompt(q1, {
     // Tip: let the lib choose or cap reasonably; using the whole context size can be wasteful
     maxTokens: 2000,
 
@@ -35,6 +41,11 @@ const a1 = await session.prompt(q1, {
     onTextChunk: (text) => {
         process.stdout.write(text); // optional: live print
     },
+}), {
+    retries: RETRIES,
+    delay: DELAY,
+    factor: FACTOR,
+    jitter: JITTER
 });
 
 console.log("\n\nFinal answer:\n", a1);
