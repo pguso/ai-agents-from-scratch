@@ -14,7 +14,7 @@ const model = await llama.loadModel({
         __dirname,
         "../",
         "models",
-        "Qwen3-1.7B-Q8_0.gguf"
+        "hf_Qwen_Qwen3-1.7B.Q8_0.gguf"
     )
 });
 
