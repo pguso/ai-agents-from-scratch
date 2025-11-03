@@ -134,10 +134,10 @@ console.log("AI: " + a1);
 
 ### 7. Cleanup
 ```javascript
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()
 ```
 - Same cleanup as intro.js
 - Always dispose resources when done

@@ -72,7 +72,7 @@ ciders into stable strategy designers, advancing long-horizon autonomy.
 const a1 = await session.prompt(q1);
 console.log("AI: " + a1);
 
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()

@@ -158,10 +158,10 @@ console.log("\n\nFinal answer:\n", a1);
 
 ### 9. Cleanup (Lines 41-44)
 ```javascript
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()
 ```
 Standard resource cleanup.
 

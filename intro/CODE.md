@@ -86,10 +86,10 @@ console.log("AI: " + a1);
 
 ### 9. Clean Up Resources
 ```javascript
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()
 ```
 - **Important**: Always dispose of resources when done
 - Frees up memory and GPU resources

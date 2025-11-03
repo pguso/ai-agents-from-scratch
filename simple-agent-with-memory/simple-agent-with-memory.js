@@ -81,7 +81,7 @@ const response2 = await session.prompt(prompt2, {functions});
 console.log("AI: " + response2);
 
 // Clean up
-llama.dispose();
-model.dispose();
-context.dispose();
-session.dispose();
+session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()

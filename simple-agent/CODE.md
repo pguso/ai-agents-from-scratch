@@ -144,10 +144,10 @@ await promptDebugger.debugContextState({session, model});
 
 ### 10. Cleanup (Lines 58-61)
 ```javascript
-llama.dispose();
-model.dispose();
-context.dispose();
-session.dispose();
+session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()
 ```
 Standard cleanup.
 

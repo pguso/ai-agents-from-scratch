@@ -55,7 +55,7 @@ const promptDebugger = new PromptDebugger({
 await promptDebugger.debugContextState({session, model});
 
 // Clean up
-llama.dispose();
-model.dispose();
-context.dispose();
-session.dispose();
+session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()

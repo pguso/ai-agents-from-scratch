@@ -29,7 +29,7 @@ const a1 = await session.prompt(prompt);
 console.log("AI: " + a1);
 
 
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()

@@ -130,10 +130,10 @@ console.log(`AI: ${answer}`);
 
 ### 7. Cleanup (Lines 45-48)
 ```javascript
-llama.dispose()
-model.dispose()
-context.dispose()
 session.dispose()
+context.dispose()
+model.dispose()
+llama.dispose()
 ```
 - Standard resource cleanup
 
