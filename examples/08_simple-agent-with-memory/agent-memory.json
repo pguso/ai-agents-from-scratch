@@ -1,0 +1,19 @@
+{
+  "memories": [
+    {
+      "type": "fact",
+      "key": "user_name",
+      "value": "Alex",
+      "source": "user",
+      "timestamp": "2025-11-05T20:24:58.220Z"
+    },
+    {
+      "type": "preference",
+      "key": "favorite_food",
+      "value": "pizza",
+      "source": "user",
+      "timestamp": "2025-11-05T20:24:58.848Z"
+    }
+  ],
+  "conversationHistory": []
+}

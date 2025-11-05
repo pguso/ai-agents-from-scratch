@@ -1,7 +1,7 @@
 import {defineChatSessionFunction, getLlama, LlamaChatSession} from "node-llama-cpp";
 import {fileURLToPath} from "url";
 import path from "path";
-import {PromptDebugger} from "../helper/prompt-debugger.js";
+import {PromptDebugger} from "../../helper/prompt-debugger.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const debug = false;
@@ -10,9 +10,10 @@ const llama = await getLlama({debug});
 const model = await llama.loadModel({
     modelPath: path.join(
         __dirname,
-        "../",
-        "models",
-        "Qwen3-1.7B-Q8_0.gguf"
+        '..',
+        '..',
+        'models',
+        'Qwen3-1.7B-Q8_0.gguf'
     )
 });
 const context = await model.createContext({contextSize: 2000});

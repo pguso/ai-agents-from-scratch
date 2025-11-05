@@ -178,7 +178,7 @@ Each example folder contains:
 ```
 AI Agent = LLM + System Prompt + Tools + Memory + Reasoning Pattern
            ─┬─   ──────┬──────   ──┬──   ──┬───   ────────┬────────
-            │           │           │       │              │
+            │          │           │       │              │
          Brain      Identity    Hands   State         Strategy
 ```
 
@@ -240,36 +240,41 @@ Usage example in `simple-agent/simple-agent.js`
 ```
 ai-agents/
 ├── README.md                          ← You are here
-├── intro/
+├─ examples/
+├── 01_intro/
 │   ├── intro.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── translation/
+├── 02_openai-intro/
+│   ├── openai-intro.js
+│   ├── CODE.md
+│   └── CONCEPT.md
+├── 03_translation/
 │   ├── translation.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── think/
+├── 04_think/
 │   ├── think.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── batch/
+├── 05_batch/
 │   ├── batch.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── coding/
+├── 06_coding/
 │   ├── coding.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── simple-agent/
+├── 07_simple-agent/
 │   ├── simple-agent.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── simple-agent-with-memory/
+├── 08_simple-agent-with-memory/
 │   ├── simple-agent-with-memory.js
 │   ├── memory-manager.js
 │   ├── CODE.md
 │   └── CONCEPT.md
-├── react-agent/
+├── 09_react-agent/
 │   ├── react-agent.js
 │   ├── CODE.md
 │   └── CONCEPT.md

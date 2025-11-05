@@ -7,13 +7,16 @@ import path from "path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const llama = await getLlama();
+const llama = await getLlama({
+    logLevel: 'error'
+});
 const model = await llama.loadModel({
     modelPath: path.join(
         __dirname,
-        "../",
-        "models",
-        "hf_giladgd_Apertus-8B-Instruct-2509.Q6_K.gguf"
+        '..',
+        '..',
+        'models',
+        'hf_giladgd_Apertus-8B-Instruct-2509.Q6_K.gguf'
     )
 });
 
@@ -69,6 +72,7 @@ all, artifact-centric continual learning transforms LLMs from brittle stepwise d
 ciders into stable strategy designers, advancing long-horizon autonomy.
 `;
 
+console.log('Translation started...')
 const a1 = await session.prompt(q1);
 console.log("AI: " + a1);
 

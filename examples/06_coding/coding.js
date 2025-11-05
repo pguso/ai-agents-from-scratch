@@ -12,9 +12,10 @@ const llama = await getLlama();
 const model = await llama.loadModel({
     modelPath: path.join(
         __dirname,
-        "../",
-        "models",
-        "hf_giladgd_gpt-oss-20b.MXFP4.gguf"
+        '..',
+        '..',
+        'models',
+        'hf_giladgd_gpt-oss-20b.MXFP4.gguf'
     )
 });
 const context = await model.createContext();

@@ -7,7 +7,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const llama = await getLlama({debug: false});
 const model = await llama.loadModel({
-    modelPath: path.join(__dirname, "../", "models", "Qwen3-1.7B-Q8_0.gguf")
+    modelPath: path.join(
+        __dirname,
+        '..',
+        '..',
+        'models',
+        'Qwen3-1.7B-Q8_0.gguf'
+    )
 });
 const context = await model.createContext({contextSize: 2000});
 
@@ -57,13 +63,13 @@ const saveMemory = defineChatSessionFunction({
                 type: "string",
                 enum: ["fact", "preference"]
             },
-            key: { type: "string" },
-            value: { type: "string" }
+            key: {type: "string"},
+            value: {type: "string"}
         },
         required: ["type", "key", "value"]
     },
-    async handler({ type, key, value }) {
-        await memoryManager.addMemory({ type, key, value });
+    async handler({type, key, value}) {
+        await memoryManager.addMemory({type, key, value});
         return `Memory saved: ${key} = ${value}`;
     }
 });

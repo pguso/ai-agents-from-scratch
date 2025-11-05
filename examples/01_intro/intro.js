@@ -12,9 +12,10 @@ const llama = await getLlama();
 const model = await llama.loadModel({
     modelPath: path.join(
         __dirname,
-        "../",
-        "models",
-        "Qwen3-1.7B-Q8_0.gguf"
+        '..',
+        '..',
+        'models',
+        'Qwen3-1.7B-Q8_0.gguf'
     )
 });
 

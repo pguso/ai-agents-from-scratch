@@ -10,12 +10,15 @@ import {fileURLToPath} from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelPath = path.join(
     __dirname,
-    "../",
-    "models",
-    "DeepSeek-R1-0528-Qwen3-8B-Q6_K.gguf"
+    '..',
+    '..',
+    'models',
+    'DeepSeek-R1-0528-Qwen3-8B-Q6_K.gguf'
 )
 
-const llama = await getLlama();
+const llama = await getLlama({
+    logLevel: 'error'
+});
 const model = await llama.loadModel({modelPath});
 const context = await model.createContext({
     sequences: 2,
@@ -35,6 +38,7 @@ const session2 = new LlamaChatSession({
 const q1 = "Hi there, how are you?";
 const q2 = "How much is 6+6?";
 
+console.log('Batching started...')
 const [
     a1,
     a2
