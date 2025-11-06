@@ -15,7 +15,23 @@ This repository teaches you to build AI agents from first principles using **loc
 
 **Philosophy**: Learn by building. Understand deeply, then use frameworks wisely.
 
-## Getting Started
+## Next Phase: Build LangChain & LangGraph Concepts From Scratch
+
+After mastering the fundamentals, the next stage of this project walks you through **re-implementing the core parts of LangChain and LangGraph** in plain JavaScript using local models.
+
+You’ll learn how frameworks structure, compose, and orchestrate LLMs by building their internal ideas yourself, step by step:
+
+- **Runnable abstraction**, understand why everything revolves around it
+- **Message types**, structure and track conversations like real frameworks
+- **Chains and composition**, connect multiple Runnables
+- **Memory and context**, manage state across calls
+- **Tools and ReAct loops**, add reasoning and action-taking
+- **Graph logic**, explore how LangGraph handles stateful workflows
+
+This is **not** about building a new framework, it’s about understanding *how frameworks think*.  
+By the end, you’ll be able to read, debug, and extend LangChain or LangGraph code with confidence because you’ve built their building blocks yourself.
+
+## Phase 1: Agent Fundamentals - From LLMs to ReAct
 
 ### Prerequisites
 - Node.js 18+
@@ -235,7 +251,7 @@ Utility for debugging prompts sent to the LLM. Shows exactly what the model sees
 
 Usage example in `simple-agent/simple-agent.js`
 
-## ️ Project Structure
+## ️ Project Structure - Fundamentals
 
 ```
 ai-agents/
@@ -284,9 +300,126 @@ ai-agents/
 └── logs/                               ← Debug outputs
 ```
 
+## Phase 2: Building a Production Framework (Tutorial)
+
+After mastering the fundamentals above, **Phase 2** takes you from scratch examples to production-grade framework design. You'll rebuild core concepts from **LangChain** and **LangGraph** to understand how real frameworks work internally.
+
+### What You'll Build
+
+A lightweight but complete agent framework with:
+- **Runnable Interface**, The composability pattern that powers everything
+- **Message System**, Typed conversation structures (Human, AI, System, Tool)
+- **Chains**, Composing multiple operations into pipelines
+- **Memory**, Persistent state across conversations
+- **Tools**, Function calling and external integrations
+- **Agents**, Decision-making loops (ReAct, Tool-calling)
+- **Graphs**, State machines for complex workflows (LangGraph concepts)
+
+### Learning Approach
+
+**Tutorial-first**: Step-by-step lessons with exercises  
+**Implementation-driven**: Build each component yourself  
+**Framework-compatible**: Learn patterns used in LangChain.js
+
+### Structure Overview
+
+```
+tutorial/
+├── 01-foundation/              # 1. Core Abstractions
+│   ├── 01-runnable/
+│   │   ├── lesson.md           # Why Runnable matters
+│   │   ├── exercises/          # Hands-on practice
+│   │   └── solutions/          # Reference implementations
+│   ├── 02-messages/            # Structuring conversations
+│   ├── 03-llm-wrapper/         # Wrapping node-llama-cpp
+│   └── 04-context/             # Configuration & callbacks
+│
+├── 02-composition/             # 2. Building Chains
+│   ├── 01-prompts/             # Template system
+│   ├── 02-parsers/             # Structured outputs
+│   ├── 03-llm-chain/           # Your first chain
+│   ├── 04-piping/              # Composition patterns
+│   └── 05-memory/              # Conversation state
+│
+├── 03-agency/                  # 3. Tools & Agents
+│   ├── 01-tools/               # Function definitions
+│   ├── 02-tool-executor/       # Safe execution
+│   ├── 03-simple-agent/        # Basic agent loop
+│   ├── 04-react-agent/         # Reasoning + Acting
+│   └── 05-structured-agent/    # JSON mode
+│
+└── 04-graphs/                  # 4. State Machines
+    ├── 01-state-basics/        # Nodes & edges
+    ├── 02-channels/            # State management
+    ├── 03-conditional-edges/   # Dynamic routing
+    ├── 04-executor/            # Running workflows
+    ├── 05-checkpointing/       # Persistence
+    └── 06-agent-graph/         # Agents as graphs
+
+src/
+├── core/                       # Runnable, Messages, Context
+├── llm/                        # LlamaCppLLM wrapper
+├── prompts/                    # Template system
+├── chains/                     # LLMChain, SequentialChain
+├── tools/                      # BaseTool, built-in tools
+├── agents/                     # AgentExecutor, ReActAgent
+├── memory/                     # BufferMemory, WindowMemory
+└── graph/                      # StateGraph, CompiledGraph
+```
+
+### Why This Matters
+
+**Understanding beats using**: When you know how frameworks work internally, you can:
+- Debug issues faster
+- Customize behavior confidently
+- Make architectural decisions wisely
+- Build your own extensions
+- Read framework source code fluently
+
+**Learn once, use everywhere**: The patterns you'll learn (Runnable, composition, state machines) apply to:
+- LangChain.js - You'll understand their abstractions
+- LangGraph.js - You'll grasp state management
+- Any agent framework - Same core concepts
+- Your own projects - Build custom solutions
+
+### Getting Started with Phase 2
+
+After completing the fundamentals (intro → react-agent), start the tutorial:
+
+```bash
+# Start with the foundation
+cd tutorial/01-foundation/01-runnable
+lesson.md                    # Read the lesson
+node exercises/01-*.js           # Complete exercises
+node solutions/01-*-solution.js  # Check your work
+```
+
+Each lesson includes:
+- **Conceptual explanation**, Why it matters
+- **Code walkthrough**, How to build it
+- **Exercises**, Practice implementing
+- **Solutions**, Reference code
+- **Real-world examples**, Practical usage
+
+**Time commitment**: ~8 weeks, 3-5 hours/week
+
+### What You'll Achieve
+
+By the end, you'll have:
+1. Built a working agent framework from scratch
+2. Understood how LangChain/LangGraph work internally
+3. Mastered composability patterns
+4. Created reusable components (tools, chains, agents)
+5. Implemented state machines for complex workflows
+6. Gained confidence to use or extend any framework
+
+**Then**: Use LangChain.js in production, knowing exactly what happens under the hood.
+
+---
+
 ## Key Takeaways
 
-### By the end of this repository, you'll understand:
+### After Phase 1 (Fundamentals), you'll understand:
 
 1. **LLMs are stateless**: Context must be managed explicitly
 2. **System prompts shape behavior**: Same model, different roles
@@ -294,17 +427,28 @@ ai-agents/
 4. **Memory is essential**: Agents need to remember across sessions
 5. **Reasoning patterns matter**: ReAct > simple prompting for complex tasks
 6. **Performance matters**: Parallel processing, streaming, token limits
-7. **Debugging is crucial**: PromptDebugger shows what the model actually sees
+7. **Debugging is crucial**: See exactly what the model receives
+
+### After Phase 2 (Framework Tutorial), you'll master:
+
+1. **The Runnable pattern**: Why everything in frameworks uses one interface
+2. **Composition over configuration**: Building complex systems from simple parts
+3. **Message-driven architecture**: How frameworks structure conversations
+4. **Chain abstraction**: Connecting prompts, LLMs, and parsers seamlessly
+5. **Tool orchestration**: Safe execution with timeouts and error handling
+6. **Agent execution loops**: The mechanics of decision-making agents
+7. **State machines**: Managing complex workflows with graphs
+8. **Production patterns**: Error handling, retries, streaming, and debugging
 
 ### What frameworks give you:
 
 Now that you understand the fundamentals, frameworks like LangChain, CrewAI, or AutoGPT provide:
-- Pre-built reasoning patterns
-- Tool libraries
-- Memory management
+- Pre-built reasoning patterns and agent templates
+- Extensive tool libraries and integrations
+- Production-ready error handling and retries
 - Multi-agent orchestration
-- Production-ready error handling
 - Observability and monitoring
+- Community extensions and plugins
 
 **You'll use them better because you know what they're doing under the hood.**
 
