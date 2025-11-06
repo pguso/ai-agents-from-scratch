@@ -36,7 +36,7 @@ State machines and workflows
 - [05-checkpointing.md](04-graphs/05-checkpointing/lesson.md) - Coming soon
 - [06-agent-graph.md](04-graphs/06-agent-graph/lesson.md) - Coming soon
 
-## Weekly Projects [Coming Soon]
+## Capstone Projects [Coming Soon]
 
 Complete these capstone projects to solidify your learning:
 
