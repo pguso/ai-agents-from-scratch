@@ -17,19 +17,8 @@ This repository teaches you to build AI agents from first principles using **loc
 
 ## Next Phase: Build LangChain & LangGraph Concepts From Scratch
 
-After mastering the fundamentals, the next stage of this project walks you through **re-implementing the core parts of LangChain and LangGraph** in plain JavaScript using local models.
-
-You’ll learn how frameworks structure, compose, and orchestrate LLMs by building their internal ideas yourself, step by step:
-
-- **Runnable abstraction**, understand why everything revolves around it
-- **Message types**, structure and track conversations like real frameworks
-- **Chains and composition**, connect multiple Runnables
-- **Memory and context**, manage state across calls
-- **Tools and ReAct loops**, add reasoning and action-taking
-- **Graph logic**, explore how LangGraph handles stateful workflows
-
-This is **not** about building a new framework, it’s about understanding *how frameworks think*.  
-By the end, you’ll be able to read, debug, and extend LangChain or LangGraph code with confidence because you’ve built their building blocks yourself.
+> After mastering the fundamentals, the next stage of this project walks you through **re-implementing the core parts of LangChain and LangGraph** in plain JavaScript using local models.
+> This is **not** about building a new framework, it’s about understanding *how frameworks work*.  
 
 ## Phase 1: Agent Fundamentals - From LLMs to ReAct
 
