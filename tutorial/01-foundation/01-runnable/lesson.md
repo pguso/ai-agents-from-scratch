@@ -2,7 +2,7 @@
 
 **Part 1: Foundation - Lesson 1**
 
-> Understanding the single pattern that powers every AI agent framework
+> Understanding the single pattern that powers most AI agent framework
 
 ## Overview
 
@@ -309,7 +309,7 @@ const biggerPipeline = pipeline.pipe(step4);
 
 ## Complete Implementation
 
-Here's the full `Runnable` class:
+Here's the full `Runnable` class (location: src/core/runnable.js):
 
 ```javascript
 /**
