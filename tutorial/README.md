@@ -1,6 +1,29 @@
 # AI Agents Framework Tutorial
 
-Welcome to the step-by-step tutorial for building a production AI agent framework!
+Welcome to the step-by-step tutorial for building your own AI agent framework!
+
+This tutorial teaches you to build a **lightweight, educational version of LangChain.js** -
+with the same core concepts and API, but simpler implementations designed for learning.
+
+Instead of diving into LangChain's complex codebase, you'll rebuild its key patterns
+yourself with clear, educational code. By the end, you'll understand what frameworks
+are actually doing, making you far more effective at using them.
+
+**What you'll implement:**
+- Runnable interface (LangChain's composability pattern)
+- Message types (structured conversations)
+- LLM wrappers (model integration)
+- Chains (composing operations)
+- Agents (decision-making loops)
+- Graphs (LangGraph state machines)
+
+**What makes this different:**
+- LangChain-compatible API (what you learn transfers directly)
+- Simpler implementations (much less code, same concepts)
+- Educational focus (understanding over completeness)
+- Real, working code (not pseudocode or toys)
+
+Build it yourself. Understand it deeply. Use LangChain confidently.
 
 ## Learning Paths
 
