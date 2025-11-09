@@ -10,6 +10,8 @@ In Lesson 1, you learned about Runnables - the foundation of composability. Now 
 
 Messages are the lingua franca of AI agents. They provide a standardized way to represent conversations, tool calls, system instructions, and more. By the end of this lesson, you'll understand why proper message typing is crucial for building reliable agents.
 
+You will see tools in use. Everything about tools will be explained in depth in the 3. main part of this tutorial.
+
 ## Why Does This Matter?
 
 ### The Problem: Unstructured Conversations

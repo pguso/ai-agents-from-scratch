@@ -27,11 +27,11 @@ Build it yourself. Understand it deeply. Use LangChain confidently.
 
 ## Learning Paths
 
-### Part 1: Foundation [Lesson 1 Available]
+### Part 1: Foundation [Lesson 1 - 3 Available]
 Core abstractions and building blocks
 - [01-runnable](01-foundation/01-runnable/lesson.md) ← Start here
 - [02-messages](01-foundation/02-messages/lesson.md)
-- [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md) - Coming soon
+- [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md)
 - [04-context](01-foundation/04-context/lesson.md) - Coming soon
 
 ### Part 2: Composition [Coming Soon]
@@ -42,7 +42,7 @@ Building chains and memory
 - [04-piping](02-composition/04-piping/lesson.md) - Coming soon
 - [05-memory](02-composition/05-memory/lesson.md) - Coming soon
 
-### Part 3: Agency [Coming Soon]
+### Part 3: Agents [Coming Soon]
 Agents and tools
 - [01-tools](03-agency/01-tools/lesson.md) - Coming soon
 - [02-tool-executor](03-agency/02-tool-executor/lesson.md) - Coming soon
