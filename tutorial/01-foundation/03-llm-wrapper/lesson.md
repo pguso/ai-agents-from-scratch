@@ -24,22 +24,22 @@ import { getLlama } from 'node-llama-cpp';
 async function myAgent(userInput) {
   // Step 1: Format the prompt
   const prompt = myCustomFormatter(userInput);
-  
+
   // Step 2: Call the LLM
   const llama = await getLlama();
   const model = await llama.loadModel({ modelPath: './model.gguf' });
   const response = await model.createCompletion(prompt);
-  
+
   // Step 3: Parse the response
   const parsed = myCustomParser(response);
-  
+
   // Step 4: Maybe call a tool?
   if (parsed.needsTool) {
     const toolResult = await myTool(parsed.args);
     // Now what? Call the LLM again? How do we loop?
     // How do we add logging? Memory? Retries?
   }
-  
+
   return parsed;
 }
 
@@ -144,18 +144,18 @@ Let's build the LLM wrapper step by step.
 ```javascript
 import { Runnable } from './runnable.js';
 import { AIMessage } from './message.js';
-import { getLlama } from 'node-llama-cpp';
+import { getLlama, LlamaChatSession } from 'node-llama-cpp';
 
 export class LlamaCppLLM extends Runnable {
   constructor(options = {}) {
     super();
-    
+
     // Model configuration
     this.modelPath = options.modelPath;
     this.temperature = options.temperature ?? 0.7;
     this.maxTokens = options.maxTokens ?? 2048;
     this.contextSize = options.contextSize ?? 4096;
-    
+
     // Internal state
     this._llama = null;
     this._model = null;
@@ -187,20 +187,20 @@ export class LlamaCppLLM extends Runnable {
     if (this._initialized) return;
 
     console.log('Loading model...');
-    
+
     // Get llama instance
     this._llama = await getLlama();
-    
+
     // Load the model
     this._model = await this._llama.loadModel({
       modelPath: this.modelPath
     });
-    
+
     // Create context (working memory for the model)
     this._context = await this._model.createContext({
       contextSize: this.contextSize
     });
-    
+
     this._initialized = true;
     console.log('Model loaded successfully');
   }
@@ -228,35 +228,33 @@ export class LlamaCppLLM extends Runnable {
 ### Step 3: Converting Messages to Prompt
 
 ```javascript
-  _messagesToPrompt(messages) {
-    // Use the model's built-in chat wrapper
-    // This handles model-specific formatting automatically
-    const chatWrapper = this._model.getChatWrapper();
-    
-    // Convert our messages to model format
-    const modelMessages = messages.map(msg => ({
-      role: this._mapRole(msg._type),
-      content: msg.content
-    }));
-    
-    // Let the chat wrapper format it correctly
-    return chatWrapper.generatePrompt(modelMessages);
+export class LlamaCppLLM extends Runnable {
+  // ... previous code ...
+
+  _buildPromptFromMessages(messages) {
+    // Extract system message if present
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
+
+    // Get the last user message as the prompt
+    const userMessages = messages.filter(msg => msg._type === 'human');
+    const lastUserMessage = userMessages[userMessages.length - 1];
+
+    return {
+      systemPrompt,
+      prompt: lastUserMessage ? lastUserMessage.content : ''
+    };
   }
 
-  _mapRole(messageType) {
-    const roleMap = {
-      'system': 'system',
-      'human': 'user',
-      'ai': 'assistant',
-      'tool': 'tool'
-    };
-    return roleMap[messageType] || 'user';
-  }
+  // ... more methods ...
+}
 ```
 
 ### Step 4: The Main Generation Method
 
 ```javascript
+import { LlamaChatSession } from 'node-llama-cpp';
+
 export class LlamaCppLLM extends Runnable {
   // ... previous code ...
 
@@ -276,19 +274,21 @@ export class LlamaCppLLM extends Runnable {
       throw new Error('Input must be string or array of messages');
     }
 
-    // Convert to prompt
-    const prompt = this._messagesToPrompt(messages);
+    // Build prompt from messages
+    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
 
-    // Create session for this generation
-    const session = this._context.createSession();
+    // Create a chat session for this request
+    const contextSequence = this._context.getSequence();
+    const session = new LlamaChatSession({
+      contextSequence,
+      systemPrompt
+    });
 
     try {
       // Generate response
       const response = await session.prompt(prompt, {
         temperature: config.temperature ?? this.temperature,
-        maxTokens: config.maxTokens ?? this.maxTokens,
-        // Stop tokens (when to stop generating)
-        stopStrings: ['Human:', 'User:', '\n\nHuman:', '\n\nUser:']
+        maxTokens: config.maxTokens ?? this.maxTokens
       });
 
       // Clean up the response
@@ -296,9 +296,8 @@ export class LlamaCppLLM extends Runnable {
 
       // Return as AIMessage
       return new AIMessage(content);
-    } finally {
-      // Always cleanup session
-      await session.dispose();
+    } catch (error) {
+      throw new Error(`Generation failed: ${error.message}`);
     }
   }
 
@@ -307,13 +306,13 @@ export class LlamaCppLLM extends Runnable {
    */
   _cleanResponse(response) {
     let cleaned = response.trim();
-    
+
     // Remove any "Assistant:" prefix if model added it
     cleaned = cleaned.replace(/^Assistant:\s*/i, '');
-    
+
     // Remove stop strings if they leaked through
     cleaned = cleaned.replace(/\n\n(Human|User):.*$/s, '');
-    
+
     return cleaned.trim();
   }
 }
@@ -324,6 +323,8 @@ export class LlamaCppLLM extends Runnable {
 For real-time output (like ChatGPT's typing effect):
 
 ```javascript
+import { LlamaChatSession } from 'node-llama-cpp';
+
 export class LlamaCppLLM extends Runnable {
   // ... previous code ...
 
@@ -340,34 +341,45 @@ export class LlamaCppLLM extends Runnable {
       throw new Error('Input must be string or array of messages');
     }
 
-    const prompt = this._messagesToPrompt(messages);
-    const session = this._context.createSession();
+    // Build prompt from messages
+    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
+
+    // Create a chat session for this request
+    const contextSequence = this._context.getSequence();
+    const session = new LlamaChatSession({
+      contextSequence,
+      systemPrompt
+    });
 
     try {
       // Stream tokens as they're generated
       let fullResponse = '';
+      const chunks = [];
 
-      for await (const token of session.promptTokens(prompt, {
+      // Generate response with streaming
+      const response = await session.prompt(prompt, {
         temperature: config.temperature ?? this.temperature,
         maxTokens: config.maxTokens ?? this.maxTokens,
-        stopStrings: ['Human:', 'User:', '\n\nHuman:', '\n\nUser:']
-      })) {
-        // Accumulate response
-        fullResponse += token;
-        
-        // Yield each token as an AIMessage chunk
-        yield new AIMessage(token, {
+        onTextChunk: (chunk) => {
+          fullResponse += chunk;
+          chunks.push(chunk);
+        }
+      });
+
+      // Yield each chunk as an AIMessage
+      for (const chunk of chunks) {
+        yield new AIMessage(chunk, {
           additionalKwargs: { chunk: true }
         });
       }
 
       // Yield final complete message
-      const cleaned = this._cleanResponse(fullResponse);
+      const cleaned = this._cleanResponse(response);
       yield new AIMessage(cleaned, {
         additionalKwargs: { final: true }
       });
-    } finally {
-      await session.dispose();
+    } catch (error) {
+      throw new Error(`Streaming failed: ${error.message}`);
     }
   }
 }
@@ -379,7 +391,7 @@ export class LlamaCppLLM extends Runnable {
 export class LlamaCppLLM extends Runnable {
   constructor(options = {}) {
     super();
-    
+
     // Required
     this.modelPath = options.modelPath;
     if (!this.modelPath) {
@@ -392,11 +404,11 @@ export class LlamaCppLLM extends Runnable {
     this.topK = options.topK ?? 40;
     this.maxTokens = options.maxTokens ?? 2048;
     this.repeatPenalty = options.repeatPenalty ?? 1.1;
-    
+
     // Context configuration
     this.contextSize = options.contextSize ?? 4096;
     this.batchSize = options.batchSize ?? 512;
-    
+
     // Behavior
     this.verbose = options.verbose ?? false;
     this.stopStrings = options.stopStrings ?? ['Human:', 'User:'];
@@ -425,12 +437,12 @@ Here's the full working LLM wrapper:
 
 import { Runnable } from '../core/runnable.js';
 import { AIMessage, HumanMessage } from '../core/message.js';
-import { getLlama } from 'node-llama-cpp';
+import { getLlama, LlamaChatSession } from 'node-llama-cpp';
 
 export class LlamaCppLLM extends Runnable {
   constructor(options = {}) {
     super();
-    
+
     // Validate required options
     this.modelPath = options.modelPath;
     if (!this.modelPath) {
@@ -443,11 +455,11 @@ export class LlamaCppLLM extends Runnable {
     this.topK = options.topK ?? 40;
     this.maxTokens = options.maxTokens ?? 2048;
     this.repeatPenalty = options.repeatPenalty ?? 1.1;
-    
+
     // Context configuration
     this.contextSize = options.contextSize ?? 4096;
     this.batchSize = options.batchSize ?? 512;
-    
+
     // Behavior
     this.verbose = options.verbose ?? false;
     this.stopStrings = options.stopStrings ?? [
@@ -473,18 +485,19 @@ export class LlamaCppLLM extends Runnable {
 
     try {
       this._llama = await getLlama();
-      
+
       this._model = await this._llama.loadModel({
         modelPath: this.modelPath
       });
-      
+
       this._context = await this._model.createContext({
         contextSize: this.contextSize,
         batchSize: this.batchSize
       });
-      
+
+
       this._initialized = true;
-      
+
       if (this.verbose) {
         console.log('Model loaded successfully');
       }
@@ -494,54 +507,21 @@ export class LlamaCppLLM extends Runnable {
   }
 
   /**
-   * Convert messages to prompt string
+   * Convert messages to prompt text for the chat session
    */
-  _messagesToPrompt(messages) {
-    // Try to use model's chat wrapper if available
-    if (this._model && this._model.getChatWrapper) {
-      try {
-        const chatWrapper = this._model.getChatWrapper();
-        const modelMessages = messages.map(msg => ({
-          role: this._mapRole(msg._type),
-          content: msg.content
-        }));
-        return chatWrapper.generatePrompt(modelMessages);
-      } catch (error) {
-        // Fall back to simple formatting
-        if (this.verbose) {
-          console.warn('Chat wrapper not available, using simple format');
-        }
-      }
-    }
+  _buildPromptFromMessages(messages) {
+    // Extract system message if present
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
 
-    // Simple format fallback
-    let prompt = '';
-    for (const message of messages) {
-      if (message._type === 'system') {
-        prompt += `System: ${message.content}\n\n`;
-      } else if (message._type === 'human') {
-        prompt += `Human: ${message.content}\n\n`;
-      } else if (message._type === 'ai') {
-        prompt += `Assistant: ${message.content}\n\n`;
-      } else if (message._type === 'tool') {
-        prompt += `Tool Result: ${message.content}\n\n`;
-      }
-    }
-    prompt += 'Assistant:';
-    return prompt;
-  }
+    // Get the last user message as the prompt
+    const userMessages = messages.filter(msg => msg._type === 'human');
+    const lastUserMessage = userMessages[userMessages.length - 1];
 
-  /**
-   * Map message types to model roles
-   */
-  _mapRole(messageType) {
-    const roleMap = {
-      'system': 'system',
-      'human': 'user',
-      'ai': 'assistant',
-      'tool': 'tool'
+    return {
+      systemPrompt,
+      prompt: lastUserMessage ? lastUserMessage.content : ''
     };
-    return roleMap[messageType] || 'user';
   }
 
   /**
@@ -570,25 +550,31 @@ export class LlamaCppLLM extends Runnable {
       throw new Error('Input must be string or array of messages');
     }
 
-    const prompt = this._messagesToPrompt(messages);
-    const session = this._context.createSession();
+    // Build prompt from messages
+    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
+
+    // Create a new chat session for this request with system prompt
+    const contextSequence = this._context.getSequence();
+    const session = new LlamaChatSession({
+      contextSequence,
+      systemPrompt
+    });
 
     try {
+      // Generate response using the chat session
       const response = await session.prompt(prompt, {
         temperature: config.temperature ?? this.temperature,
         topP: config.topP ?? this.topP,
         topK: config.topK ?? this.topK,
         maxTokens: config.maxTokens ?? this.maxTokens,
-        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
-        stopStrings: config.stopStrings ?? this.stopStrings
+        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty
       });
 
-      const content = this._cleanResponse(response);
-      return new AIMessage(content);
+      // Clean and return the response
+      const cleanedResponse = this._cleanResponse(response);
+      return new AIMessage(cleanedResponse);
     } catch (error) {
       throw new Error(`Generation failed: ${error.message}`);
-    } finally {
-      await session.dispose();
     }
   }
 
@@ -607,35 +593,47 @@ export class LlamaCppLLM extends Runnable {
       throw new Error('Input must be string or array of messages');
     }
 
-    const prompt = this._messagesToPrompt(messages);
-    const session = this._context.createSession();
+    // Build prompt from messages
+    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
+
+    // Create a new chat session for this request with system prompt
+    const contextSequence = this._context.getSequence();
+    const session = new LlamaChatSession({
+      contextSequence,
+      systemPrompt
+    });
 
     try {
       let fullResponse = '';
+      const chunks = [];
 
-      for await (const token of session.promptTokens(prompt, {
+      // Use the chat session to generate a streaming response
+      const response = await session.prompt(prompt, {
         temperature: config.temperature ?? this.temperature,
         topP: config.topP ?? this.topP,
         topK: config.topK ?? this.topK,
         maxTokens: config.maxTokens ?? this.maxTokens,
         repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
-        stopStrings: config.stopStrings ?? this.stopStrings
-      })) {
-        fullResponse += token;
-        yield new AIMessage(token, {
+        onTextChunk: (chunk) => {
+          fullResponse += chunk;
+          chunks.push(chunk);
+        }
+      });
+
+      // Yield all collected chunks
+      for (const chunk of chunks) {
+        yield new AIMessage(chunk, {
           additionalKwargs: { chunk: true }
         });
       }
 
-      // Yield final message
-      const cleaned = this._cleanResponse(fullResponse);
-      yield new AIMessage(cleaned, {
+      // Clean and yield final message
+      const cleanedResponse = this._cleanResponse(response);
+      yield new AIMessage(cleanedResponse, {
         additionalKwargs: { final: true }
       });
     } catch (error) {
       throw new Error(`Streaming failed: ${error.message}`);
-    } finally {
-      await session.dispose();
     }
   }
 
@@ -645,9 +643,11 @@ export class LlamaCppLLM extends Runnable {
   async dispose() {
     if (this._context) {
       await this._context.dispose();
+      this._context = null;
     }
     if (this._model) {
       await this._model.dispose();
+      this._model = null;
     }
     this._initialized = false;
   }
@@ -710,6 +710,25 @@ console.log('\n');
 // Lines of code flow
 // Like rivers to the sea
 // Logic makes it so
+```
+
+You can also use callbacks for more control:
+
+```javascript
+const llm = new LlamaCppLLM({
+  modelPath: './models/llama-3.1-8b.gguf'
+});
+
+let response = '';
+await llm.invoke("Write a haiku about coding", {
+  callbacks: [{
+    handleLLMNewToken(token) {
+      process.stdout.write(token);
+      response += token;
+    }
+  }]
+});
+console.log('\nFinal response:', response);
 ```
 
 ### Example 4: Temperature Control
@@ -834,20 +853,20 @@ class LlamaCppLLMWithCounting extends LlamaCppLLM {
 
   async _call(input, config = {}) {
     const result = await super._call(input, config);
-    
+
     // Rough token estimation (4 chars ≈ 1 token)
     const promptTokens = Math.ceil(JSON.stringify(input).length / 4);
     const completionTokens = Math.ceil(result.content.length / 4);
-    
+
     this.totalTokens += promptTokens + completionTokens;
-    
+
     // Add to result metadata
     result.additionalKwargs.usage = {
       promptTokens,
       completionTokens,
       totalTokens: promptTokens + completionTokens
     };
-    
+
     return result;
   }
 
@@ -868,15 +887,15 @@ class CachedLLM extends LlamaCppLLM {
 
   async _call(input, config = {}) {
     const key = JSON.stringify({ input, config });
-    
+
     if (this.cache.has(key)) {
       console.log('Cache hit!');
       return this.cache.get(key);
     }
-    
+
     const result = await super._call(input, config);
     this.cache.set(key, result);
-    
+
     return result;
   }
 }
@@ -1026,7 +1045,7 @@ console.log('Ready!');
 
 ```javascript
 // Bad: Exceeds context window
-const hugeConversation = [...1000 messages...];
+const hugeConversation = Array(1000).fill({ content: "message" });
 await llm.invoke(hugeConversation); // Will fail or truncate
 ```
 

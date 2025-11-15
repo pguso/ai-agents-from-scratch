@@ -1,19 +1,18 @@
 /**
- * LlamaCppLLM
+ * LlamaCppLLM - node-llama-cpp wrapper as a Runnable
  *
- * node-llama-cpp wrapper implementing the Runnable interface
- *
- * @module src/llm/llama-cpp-llm.js
+ * @module llm/llama-cpp-llm
  */
 
-import {getLlama, LlamaChatSession} from 'node-llama-cpp';
-import {AIMessage, HumanMessage, Runnable} from "../core/index.js";
+import { Runnable } from '../core/runnable.js';
+import { AIMessage, HumanMessage } from '../core/message.js';
+import { getLlama } from 'node-llama-cpp';
 
 export class LlamaCppLLM extends Runnable {
   constructor(options = {}) {
     super();
 
-    // Required
+    // Validate required options
     this.modelPath = options.modelPath;
     if (!this.modelPath) {
       throw new Error('modelPath is required');
@@ -32,115 +31,185 @@ export class LlamaCppLLM extends Runnable {
 
     // Behavior
     this.verbose = options.verbose ?? false;
-    this.stopStrings = options.stopStrings ?? ['Human:', 'User:'];
+    this.stopStrings = options.stopStrings ?? [
+      'Human:', 'User:', '\n\nHuman:', '\n\nUser:'
+    ];
 
     // Internal state
     this._llama = null;
     this._model = null;
     this._context = null;
-    this._type = null;
+    this._chatSession = null;
     this._initialized = false;
   }
 
   /**
-   * Initialize the model (lazy loading)
+   * Initialize model (lazy loading)
    */
   async _initialize() {
     if (this._initialized) return;
 
-    console.log('Loading model...');
-
-    // Get llama instance
-    this._llama = await getLlama();
-
-    // Load the model
-    this._model = await this._llama.loadModel({
-      modelPath: this.modelPath
-    });
-
-    // Create context (working memory for the model)
-    this._context = await this._model.createContext({
-      contextSize: this.contextSize
-    });
-
-    // Create a reusable session
-    this._session = new LlamaChatSession({
-      contextSequence: this._context.getSequence()
-    });
-
-    this._initialized = true;
-    console.log('Model loaded successfully');
-  }
-
-  async _call(input, config = {}) {
-    // Initialize if needed
-    await this._initialize();
-
-    // Handle different input types
-    let prompt;
-    if (typeof input === 'string') {
-      // Simple string input
-      prompt = input;
-    } else if (Array.isArray(input)) {
-      // Array of messages - take the last human message
-      const lastHumanMsg = input.filter(m => m._type === 'human').pop();
-      prompt = lastHumanMsg ? lastHumanMsg.content : '';
-    } else {
-      throw new Error('Input must be string or array of messages');
+    if (this.verbose) {
+      console.log(`Loading model: ${this.modelPath}`);
     }
 
     try {
-      // Generate response using the session
-      const response = await this._session.prompt(prompt, {
-        temperature: config.temperature ?? this.temperature,
-        maxTokens: config.maxTokens ?? this.maxTokens
+      this._llama = await getLlama();
+
+      this._model = await this._llama.loadModel({
+        modelPath: this.modelPath
       });
 
-      // Return as AIMessage
-      return new AIMessage(response);
+      this._context = await this._model.createContext({
+        contextSize: this.contextSize,
+        batchSize: this.batchSize
+      });
+
+      // Create a chat session with the context sequence
+      const contextSequence = this._context.getSequence();
+      this._chatSession = new this._llama.LlamaChatSession({
+        contextSequence
+      });
+
+      this._initialized = true;
+
+      if (this.verbose) {
+        console.log('Model loaded successfully');
+      }
     } catch (error) {
-      console.error('Error generating response:', error);
-      throw error;
+      throw new Error(`Failed to initialize model: ${error.message}`);
     }
   }
 
-  // TODO implement correctly
+  /**
+   * Convert messages to chat history format
+   */
+  _messagesToChatHistory(messages) {
+    return messages.map(msg => {
+      if (msg._type === 'system') {
+        return { type: 'system', text: msg.content };
+      } else if (msg._type === 'human') {
+        return { type: 'user', text: msg.content };
+      } else if (msg._type === 'ai') {
+        return { type: 'model', response: msg.content };
+      } else if (msg._type === 'tool') {
+        // Handle tool messages - this depends on your specific needs
+        return { type: 'system', text: `Tool Result: ${msg.content}` };
+      }
+      return { type: 'user', text: msg.content };
+    });
+  }
+
+  /**
+   * Clean model response
+   */
+  _cleanResponse(response) {
+    let cleaned = response.trim();
+    cleaned = cleaned.replace(/^(Assistant|AI):\s*/i, '');
+    cleaned = cleaned.replace(/\n\n(Human|User):.*$/s, '');
+    return cleaned.trim();
+  }
+
+  /**
+   * Main generation method
+   */
+  async _call(input, config = {}) {
+    await this._initialize();
+
+    // Handle input types
+    let messages;
+    if (typeof input === 'string') {
+      messages = [new HumanMessage(input)];
+    } else if (Array.isArray(input)) {
+      messages = input;
+    } else {
+      throw new Error('Input must be string or array of messages');
+    }
+
+    // Extract system message if present
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
+
+    // Set chat history from messages
+    const chatHistory = this._messagesToChatHistory(messages);
+    this._chatSession.setChatHistory(chatHistory);
+
+    // If there's a system message, set it
+    if (systemPrompt) {
+      this._chatSession.systemPrompt = systemPrompt;
+    }
+
+    try {
+      // Use the chat session to generate a response
+      const response = await this._chatSession.prompt('', {
+        temperature: config.temperature ?? this.temperature,
+        topP: config.topP ?? this.topP,
+        topK: config.topK ?? this.topK,
+        maxTokens: config.maxTokens ?? this.maxTokens,
+        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
+        stopStrings: config.stopStrings ?? this.stopStrings
+      });
+
+      return new AIMessage(response);
+    } catch (error) {
+      throw new Error(`Generation failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Streaming generation
+   */
   async *_stream(input, config = {}) {
     await this._initialize();
 
-    // Handle different input types
-    let prompt;
+    let messages;
     if (typeof input === 'string') {
-      prompt = input;
+      messages = [new HumanMessage(input)];
     } else if (Array.isArray(input)) {
-      // Array of messages - take the last human message
-      const lastHumanMsg = input.filter(m => m._type === 'human').pop();
-      prompt = lastHumanMsg ? lastHumanMsg.content : '';
+      messages = input;
     } else {
       throw new Error('Input must be string or array of messages');
+    }
+
+    // Extract system message if present
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
+
+    // Set chat history from messages
+    const chatHistory = this._messagesToChatHistory(messages);
+    this._chatSession.setChatHistory(chatHistory);
+
+    // If there's a system message, set it
+    if (systemPrompt) {
+      this._chatSession.systemPrompt = systemPrompt;
     }
 
     try {
       let fullResponse = '';
 
-      // Use onTextChunk callback to stream tokens
-      await this._session.prompt(prompt, {
+      // Use the chat session to generate a streaming response
+      const response = await this._chatSession.prompt('', {
         temperature: config.temperature ?? this.temperature,
+        topP: config.topP ?? this.topP,
+        topK: config.topK ?? this.topK,
         maxTokens: config.maxTokens ?? this.maxTokens,
+        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
+        stopStrings: config.stopStrings ?? this.stopStrings,
         onTextChunk: (chunk) => {
           fullResponse += chunk;
-          // Note: We can't yield from inside a callback
-          // We'll need to handle this differently
+          // Yield each chunk as an AIMessage
+          yield new AIMessage(chunk, {
+            additionalKwargs: { chunk: true }
+          });
         }
       });
 
-      // Since we can't yield from callback, yield the full response
-      // For true streaming, we need a different approach
-      yield new AIMessage(fullResponse);
-
+      // Yield final message
+      yield new AIMessage(response, {
+        additionalKwargs: { final: true }
+      });
     } catch (error) {
-      console.error('Error streaming response:', error);
-      throw error;
+      throw new Error(`Streaming failed: ${error.message}`);
     }
   }
 
@@ -150,10 +219,19 @@ export class LlamaCppLLM extends Runnable {
   async dispose() {
     if (this._context) {
       await this._context.dispose();
+      this._context = null;
     }
     if (this._model) {
       await this._model.dispose();
+      this._model = null;
     }
+    this._chatSession = null;
     this._initialized = false;
   }
+
+  toString() {
+    return `LlamaCppLLM(model=${this.modelPath})`;
+  }
 }
+
+export default LlamaCppLLM;
