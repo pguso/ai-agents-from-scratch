@@ -44,7 +44,7 @@ export class LlamaCppLLM extends Runnable {
    * @example Basic Setup
    * ```javascript
    * const llm = new LlamaCppLLM({
-   *   modelPath: './models/llama-2-7b.gguf',
+   *   modelPath: './models/Meta-Llama-3.1-8B-Instruct-Q5_K_S.gguf',
    *   temperature: 0.7
    * });
    * ```
