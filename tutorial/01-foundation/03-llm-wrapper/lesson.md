@@ -22,25 +22,25 @@ import { getLlama } from 'node-llama-cpp';
 
 // Each component is isolated - they don't know about each other
 async function myAgent(userInput) {
-  // Step 1: Format the prompt
-  const prompt = myCustomFormatter(userInput);
+    // Step 1: Format the prompt
+    const prompt = myCustomFormatter(userInput);
 
-  // Step 2: Call the LLM
-  const llama = await getLlama();
-  const model = await llama.loadModel({ modelPath: './model.gguf' });
-  const response = await model.createCompletion(prompt);
+    // Step 2: Call the LLM
+    const llama = await getLlama();
+    const model = await llama.loadModel({ modelPath: './model.gguf' });
+    const response = await model.createCompletion(prompt);
 
-  // Step 3: Parse the response
-  const parsed = myCustomParser(response);
+    // Step 3: Parse the response
+    const parsed = myCustomParser(response);
 
-  // Step 4: Maybe call a tool?
-  if (parsed.needsTool) {
-    const toolResult = await myTool(parsed.args);
-    // Now what? Call the LLM again? How do we loop?
-    // How do we add logging? Memory? Retries?
-  }
+    // Step 4: Maybe call a tool?
+    if (parsed.needsTool) {
+        const toolResult = await myTool(parsed.args);
+        // Now what? Call the LLM again? How do we loop?
+        // How do we add logging? Memory? Retries?
+    }
 
-  return parsed;
+    return parsed;
 }
 
 // Problems:
@@ -58,16 +58,16 @@ const llm = new LlamaCppLLM({ modelPath: './model.gguf' });
 
 // Simple usage
 const response = await llm.invoke([
-  new SystemMessage("You are helpful"),
-  new HumanMessage("Hi")
+    new SystemMessage("You are helpful"),
+    new HumanMessage("Hi")
 ]);
 // Returns: AIMessage("Hello! How can I help you?")
 
 // But the real power is composition
 const agent = promptTemplate
-  .pipe(llm)
-  .pipe(outputParser)
-  .pipe(toolExecutor);
+    .pipe(llm)
+    .pipe(outputParser)
+    .pipe(toolExecutor);
 
 // Now you can:
 // ✅ Reuse components in different chains
@@ -86,6 +86,7 @@ The LLM wrapper isn't about making node-llama-cpp easier - it's about making it 
 3. **Composability**: Works with `.pipe()` to chain operations
 4. **Observability**: Callbacks work automatically for logging/metrics
 5. **Configuration**: Runtime settings pass through cleanly
+6. **History Isolation**: Proper batch processing without contamination
 
 Think of it as an adapter that lets node-llama-cpp play nicely with the rest of your agent system.
 
@@ -94,12 +95,12 @@ Think of it as an adapter that lets node-llama-cpp play nicely with the rest of 
 By the end of this lesson, you will:
 
 - ✅ Understand how to wrap complex libraries as Runnables
-- ✅ Convert Messages to LLM prompts
+- ✅ Convert Messages to LLM chat history
 - ✅ Handle model loading and lifecycle
 - ✅ Implement streaming for real-time output
 - ✅ Add temperature and other generation parameters
-- ✅ Manage context windows and token limits
-- ✅ Build a production-ready LLM interface
+- ✅ Manage context windows and chat history
+- ✅ Handle batch processing with history isolation
 
 ## Core Concepts
 
@@ -108,20 +109,23 @@ By the end of this lesson, you will:
 An LLM wrapper is an abstraction layer that:
 1. **Hides complexity** - No need to manage contexts, sessions, or cleanup
 2. **Provides a standard interface** - Same API regardless of underlying model
-3. **Handles conversion** - Transforms Messages into model-specific prompts
+3. **Handles conversion** - Transforms Messages into model-specific chat history
 4. **Manages resources** - Automatic initialization and cleanup
 5. **Enables composition** - Works seamlessly in chains
+6. **Isolates state** - Prevents history contamination in batch processing
 
 ### The Wrapper's Responsibilities
 
 ```
 Input (Messages)
       ↓
-[1. Convert to Prompt]
+[1. Convert to Chat History]
       ↓
-[2. Call LLM]
+[2. Manage System Prompt]
       ↓
-[3. Parse Response]
+[3. Call LLM]
+      ↓
+[4. Parse Response]
       ↓
 Output (AIMessage)
 ```
@@ -129,11 +133,13 @@ Output (AIMessage)
 ### Key Challenges
 
 1. **Model Loading**: Models are large and slow to load
-2. **Prompt Format**: Each model expects different formats
-3. **Context Management**: Limited context windows
-4. **Token Counting**: Need to track usage
+2. **Chat History Format**: Convert Messages to node-llama-cpp format
+3. **System Prompt Management**: Clear and set for each call
+4. **Context Management**: Limited context windows
 5. **Streaming**: Real-time output is complex
-6. **Error Handling**: Models can fail in various ways
+6. **Batch Isolation**: Prevent history contamination
+7. **Error Handling**: Models can fail in various ways
+8. **Chat Wrappers**: Different models need different formats
 
 ## Implementation Deep Dive
 
@@ -155,11 +161,15 @@ export class LlamaCppLLM extends Runnable {
     this.temperature = options.temperature ?? 0.7;
     this.maxTokens = options.maxTokens ?? 2048;
     this.contextSize = options.contextSize ?? 4096;
+    
+    // Chat wrapper configuration (auto-detects by default)
+    this.chatWrapper = options.chatWrapper ?? 'auto';
 
     // Internal state
     this._llama = null;
     this._model = null;
     this._context = null;
+    this._chatSession = null;
     this._initialized = false;
   }
 
@@ -171,10 +181,11 @@ export class LlamaCppLLM extends Runnable {
 
 **Key decisions**:
 - Stores configuration (temperature, max tokens, etc.)
-- Tracks internal state (model, context)
+- Supports custom chat wrappers (e.g., QwenChatWrapper)
+- Tracks internal state (model, context, session)
 - Lazy initialization (load on first use)
 
-### Step 2: Model Initialization
+### Step 2: Model Initialization with Chat Wrapper Support
 
 ```javascript
 export class LlamaCppLLM extends Runnable {
@@ -186,454 +197,48 @@ export class LlamaCppLLM extends Runnable {
   async _initialize() {
     if (this._initialized) return;
 
-    console.log('Loading model...');
-
-    // Get llama instance
-    this._llama = await getLlama();
-
-    // Load the model
-    this._model = await this._llama.loadModel({
-      modelPath: this.modelPath
-    });
-
-    // Create context (working memory for the model)
-    this._context = await this._model.createContext({
-      contextSize: this.contextSize
-    });
-
-    this._initialized = true;
-    console.log('Model loaded successfully');
-  }
-
-  /**
-   * Cleanup resources
-   */
-  async dispose() {
-    if (this._context) {
-      await this._context.dispose();
-    }
-    if (this._model) {
-      await this._model.dispose();
-    }
-    this._initialized = false;
-  }
-}
-```
-
-**Why lazy loading?**
-- Models take 5-30 seconds to load
-- Don't load until actually needed
-- Share one loaded model across multiple calls
-
-### Step 3: Converting Messages to Prompt
-
-```javascript
-export class LlamaCppLLM extends Runnable {
-  // ... previous code ...
-
-  _buildPromptFromMessages(messages) {
-    // Extract system message if present
-    const systemMessages = messages.filter(msg => msg._type === 'system');
-    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
-
-    // Get the last user message as the prompt
-    const userMessages = messages.filter(msg => msg._type === 'human');
-    const lastUserMessage = userMessages[userMessages.length - 1];
-
-    return {
-      systemPrompt,
-      prompt: lastUserMessage ? lastUserMessage.content : ''
-    };
-  }
-
-  // ... more methods ...
-}
-```
-
-### Step 4: The Main Generation Method
-
-```javascript
-import { LlamaChatSession } from 'node-llama-cpp';
-
-export class LlamaCppLLM extends Runnable {
-  // ... previous code ...
-
-  async _call(input, config = {}) {
-    // Initialize if needed
-    await this._initialize();
-
-    // Handle different input types
-    let messages;
-    if (typeof input === 'string') {
-      // Simple string input
-      messages = [new HumanMessage(input)];
-    } else if (Array.isArray(input)) {
-      // Array of messages
-      messages = input;
-    } else {
-      throw new Error('Input must be string or array of messages');
-    }
-
-    // Build prompt from messages
-    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
-
-    // Create a chat session for this request
-    const contextSequence = this._context.getSequence();
-    const session = new LlamaChatSession({
-      contextSequence,
-      systemPrompt
-    });
-
-    try {
-      // Generate response
-      const response = await session.prompt(prompt, {
-        temperature: config.temperature ?? this.temperature,
-        maxTokens: config.maxTokens ?? this.maxTokens
-      });
-
-      // Clean up the response
-      const content = this._cleanResponse(response);
-
-      // Return as AIMessage
-      return new AIMessage(content);
-    } catch (error) {
-      throw new Error(`Generation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Clean up the model's response
-   */
-  _cleanResponse(response) {
-    let cleaned = response.trim();
-
-    // Remove any "Assistant:" prefix if model added it
-    cleaned = cleaned.replace(/^Assistant:\s*/i, '');
-
-    // Remove stop strings if they leaked through
-    cleaned = cleaned.replace(/\n\n(Human|User):.*$/s, '');
-
-    return cleaned.trim();
-  }
-}
-```
-
-### Step 5: Streaming Support
-
-For real-time output (like ChatGPT's typing effect):
-
-```javascript
-import { LlamaChatSession } from 'node-llama-cpp';
-
-export class LlamaCppLLM extends Runnable {
-  // ... previous code ...
-
-  async *_stream(input, config = {}) {
-    await this._initialize();
-
-    // Prepare messages and prompt (same as _call)
-    let messages;
-    if (typeof input === 'string') {
-      messages = [new HumanMessage(input)];
-    } else if (Array.isArray(input)) {
-      messages = input;
-    } else {
-      throw new Error('Input must be string or array of messages');
-    }
-
-    // Build prompt from messages
-    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
-
-    // Create a chat session for this request
-    const contextSequence = this._context.getSequence();
-    const session = new LlamaChatSession({
-      contextSequence,
-      systemPrompt
-    });
-
-    try {
-      // Stream tokens as they're generated
-      let fullResponse = '';
-      const chunks = [];
-
-      // Generate response with streaming
-      const response = await session.prompt(prompt, {
-        temperature: config.temperature ?? this.temperature,
-        maxTokens: config.maxTokens ?? this.maxTokens,
-        onTextChunk: (chunk) => {
-          fullResponse += chunk;
-          chunks.push(chunk);
-        }
-      });
-
-      // Yield each chunk as an AIMessage
-      for (const chunk of chunks) {
-        yield new AIMessage(chunk, {
-          additionalKwargs: { chunk: true }
-        });
-      }
-
-      // Yield final complete message
-      const cleaned = this._cleanResponse(response);
-      yield new AIMessage(cleaned, {
-        additionalKwargs: { final: true }
-      });
-    } catch (error) {
-      throw new Error(`Streaming failed: ${error.message}`);
-    }
-  }
-}
-```
-
-### Step 6: Adding Configuration Options
-
-```javascript
-export class LlamaCppLLM extends Runnable {
-  constructor(options = {}) {
-    super();
-
-    // Required
-    this.modelPath = options.modelPath;
-    if (!this.modelPath) {
-      throw new Error('modelPath is required');
-    }
-
-    // Generation parameters
-    this.temperature = options.temperature ?? 0.7;
-    this.topP = options.topP ?? 0.9;
-    this.topK = options.topK ?? 40;
-    this.maxTokens = options.maxTokens ?? 2048;
-    this.repeatPenalty = options.repeatPenalty ?? 1.1;
-
-    // Context configuration
-    this.contextSize = options.contextSize ?? 4096;
-    this.batchSize = options.batchSize ?? 512;
-
-    // Behavior
-    this.verbose = options.verbose ?? false;
-    this.stopStrings = options.stopStrings ?? ['Human:', 'User:'];
-
-    // Internal state
-    this._llama = null;
-    this._model = null;
-    this._context = null;
-    this._initialized = false;
-  }
-
-  // ... rest of implementation ...
-}
-```
-
-## Complete Implementation
-
-Here's the full working LLM wrapper:
-
-```javascript
-/**
- * LlamaCppLLM - node-llama-cpp wrapper as a Runnable
- * 
- * @module llm/llama-cpp-llm
- */
-
-import { Runnable } from '../core/runnable.js';
-import { AIMessage, HumanMessage } from '../core/message.js';
-import { getLlama, LlamaChatSession } from 'node-llama-cpp';
-
-export class LlamaCppLLM extends Runnable {
-  constructor(options = {}) {
-    super();
-
-    // Validate required options
-    this.modelPath = options.modelPath;
-    if (!this.modelPath) {
-      throw new Error('modelPath is required');
-    }
-
-    // Generation parameters
-    this.temperature = options.temperature ?? 0.7;
-    this.topP = options.topP ?? 0.9;
-    this.topK = options.topK ?? 40;
-    this.maxTokens = options.maxTokens ?? 2048;
-    this.repeatPenalty = options.repeatPenalty ?? 1.1;
-
-    // Context configuration
-    this.contextSize = options.contextSize ?? 4096;
-    this.batchSize = options.batchSize ?? 512;
-
-    // Behavior
-    this.verbose = options.verbose ?? false;
-    this.stopStrings = options.stopStrings ?? [
-      'Human:', 'User:', '\n\nHuman:', '\n\nUser:'
-    ];
-
-    // Internal state
-    this._llama = null;
-    this._model = null;
-    this._context = null;
-    this._initialized = false;
-  }
-
-  /**
-   * Initialize model (lazy loading)
-   */
-  async _initialize() {
-    if (this._initialized) return;
-
     if (this.verbose) {
       console.log(`Loading model: ${this.modelPath}`);
     }
 
     try {
+      // Step 1: Get llama instance
       this._llama = await getLlama();
 
+      // Step 2: Load the model
       this._model = await this._llama.loadModel({
         modelPath: this.modelPath
       });
 
+      // Step 3: Create context (working memory)
       this._context = await this._model.createContext({
         contextSize: this.contextSize,
         batchSize: this.batchSize
       });
 
+      // Step 4: Create chat session with optional chat wrapper
+      const contextSequence = this._context.getSequence();
+      const sessionConfig = { contextSequence };
+
+      // Add custom chat wrapper if specified
+      if (this.chatWrapper !== 'auto') {
+        sessionConfig.chatWrapper = this.chatWrapper;
+      }
+
+      this._chatSession = new LlamaChatSession(sessionConfig);
 
       this._initialized = true;
 
       if (this.verbose) {
-        console.log('Model loaded successfully');
-      }
-    } catch (error) {
-      throw new Error(`Failed to initialize model: ${error.message}`);
-    }
-  }
-
-  /**
-   * Convert messages to prompt text for the chat session
-   */
-  _buildPromptFromMessages(messages) {
-    // Extract system message if present
-    const systemMessages = messages.filter(msg => msg._type === 'system');
-    const systemPrompt = systemMessages.length > 0 ? systemMessages[0].content : undefined;
-
-    // Get the last user message as the prompt
-    const userMessages = messages.filter(msg => msg._type === 'human');
-    const lastUserMessage = userMessages[userMessages.length - 1];
-
-    return {
-      systemPrompt,
-      prompt: lastUserMessage ? lastUserMessage.content : ''
-    };
-  }
-
-  /**
-   * Clean model response
-   */
-  _cleanResponse(response) {
-    let cleaned = response.trim();
-    cleaned = cleaned.replace(/^(Assistant|AI):\s*/i, '');
-    cleaned = cleaned.replace(/\n\n(Human|User):.*$/s, '');
-    return cleaned.trim();
-  }
-
-  /**
-   * Main generation method
-   */
-  async _call(input, config = {}) {
-    await this._initialize();
-
-    // Handle input types
-    let messages;
-    if (typeof input === 'string') {
-      messages = [new HumanMessage(input)];
-    } else if (Array.isArray(input)) {
-      messages = input;
-    } else {
-      throw new Error('Input must be string or array of messages');
-    }
-
-    // Build prompt from messages
-    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
-
-    // Create a new chat session for this request with system prompt
-    const contextSequence = this._context.getSequence();
-    const session = new LlamaChatSession({
-      contextSequence,
-      systemPrompt
-    });
-
-    try {
-      // Generate response using the chat session
-      const response = await session.prompt(prompt, {
-        temperature: config.temperature ?? this.temperature,
-        topP: config.topP ?? this.topP,
-        topK: config.topK ?? this.topK,
-        maxTokens: config.maxTokens ?? this.maxTokens,
-        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty
-      });
-
-      // Clean and return the response
-      const cleanedResponse = this._cleanResponse(response);
-      return new AIMessage(cleanedResponse);
-    } catch (error) {
-      throw new Error(`Generation failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Streaming generation
-   */
-  async *_stream(input, config = {}) {
-    await this._initialize();
-
-    let messages;
-    if (typeof input === 'string') {
-      messages = [new HumanMessage(input)];
-    } else if (Array.isArray(input)) {
-      messages = input;
-    } else {
-      throw new Error('Input must be string or array of messages');
-    }
-
-    // Build prompt from messages
-    const { systemPrompt, prompt } = this._buildPromptFromMessages(messages);
-
-    // Create a new chat session for this request with system prompt
-    const contextSequence = this._context.getSequence();
-    const session = new LlamaChatSession({
-      contextSequence,
-      systemPrompt
-    });
-
-    try {
-      let fullResponse = '';
-      const chunks = [];
-
-      // Use the chat session to generate a streaming response
-      const response = await session.prompt(prompt, {
-        temperature: config.temperature ?? this.temperature,
-        topP: config.topP ?? this.topP,
-        topK: config.topK ?? this.topK,
-        maxTokens: config.maxTokens ?? this.maxTokens,
-        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
-        onTextChunk: (chunk) => {
-          fullResponse += chunk;
-          chunks.push(chunk);
+        console.log('✓ Model loaded successfully');
+        if (this.chatWrapper !== 'auto') {
+          console.log(`✓ Using custom chat wrapper: ${this.chatWrapper.constructor.name}`);
         }
-      });
-
-      // Yield all collected chunks
-      for (const chunk of chunks) {
-        yield new AIMessage(chunk, {
-          additionalKwargs: { chunk: true }
-        });
       }
-
-      // Clean and yield final message
-      const cleanedResponse = this._cleanResponse(response);
-      yield new AIMessage(cleanedResponse, {
-        additionalKwargs: { final: true }
-      });
     } catch (error) {
-      throw new Error(`Streaming failed: ${error.message}`);
+      throw new Error(
+        `Failed to initialize model at ${this.modelPath}: ${error.message}`
+      );
     }
   }
 
@@ -649,16 +254,289 @@ export class LlamaCppLLM extends Runnable {
       await this._model.dispose();
       this._model = null;
     }
+    this._chatSession = null;
     this._initialized = false;
-  }
 
-  toString() {
-    return `LlamaCppLLM(model=${this.modelPath})`;
+    if (this.verbose) {
+      console.log('✓ Model resources disposed');
+    }
   }
 }
-
-export default LlamaCppLLM;
 ```
+
+**Why lazy loading?**
+- Models take 5-30 seconds to load
+- Don't load until actually needed
+- Share one loaded model across multiple calls
+
+**Chat Wrapper Support**:
+- Defaults to 'auto' (library auto-detects)
+- Supports custom wrappers like QwenChatWrapper for specific models
+- Useful for controlling model behavior (e.g., discouraging thoughts)
+
+### Step 3: Converting Messages to Chat History
+
+```javascript
+export class LlamaCppLLM extends Runnable {
+  // ... previous code ...
+
+  /**
+   * Convert our Message objects to node-llama-cpp chat history format
+   */
+  _messagesToChatHistory(messages) {
+    return messages.map(msg => {
+      // System messages: instructions for the AI
+      if (msg._type === 'system') {
+        return { type: 'system', text: msg.content };
+      }
+      // Human messages: user input
+      else if (msg._type === 'human') {
+        return { type: 'user', text: msg.content };
+      }
+      // AI messages: previous AI responses
+      else if (msg._type === 'ai') {
+        return { type: 'model', response: msg.content };
+      }
+      // Tool messages: results from tool execution
+      else if (msg._type === 'tool') {
+        return { type: 'system', text: `Tool Result: ${msg.content}` };
+      }
+
+      // Fallback: treat unknown types as user messages
+      return { type: 'user', text: msg.content };
+    });
+  }
+}
+```
+
+**Key insight**: This bridges between your standardized Message types and what node-llama-cpp expects. Different models may need different chat formats, which is why chat wrappers exist.
+
+### Step 4: The Main Generation Method
+
+```javascript
+export class LlamaCppLLM extends Runnable {
+  // ... previous code ...
+
+  async _call(input, config = {}) {
+    // Initialize if needed
+    await this._initialize();
+
+    // Clear history if requested (important for batch processing)
+    if (config.clearHistory) {
+      this._chatSession.setChatHistory([]);
+    }
+
+    // Handle different input types
+    let messages;
+    if (typeof input === 'string') {
+      messages = [new HumanMessage(input)];
+    } else if (Array.isArray(input)) {
+      messages = input;
+    } else {
+      throw new Error('Input must be string or array of messages');
+    }
+
+    // Extract system message if present
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0
+      ? systemMessages[0].content
+      : '';
+
+    // Convert our Message objects to llama.cpp format
+    const chatHistory = this._messagesToChatHistory(messages);
+    this._chatSession.setChatHistory(chatHistory);
+
+    // ALWAYS set system prompt (either new value or empty string to clear)
+    this._chatSession.systemPrompt = systemPrompt;
+
+    try {
+      // Build prompt options
+      const promptOptions = {
+        temperature: config.temperature ?? this.temperature,
+        topP: config.topP ?? this.topP,
+        topK: config.topK ?? this.topK,
+        maxTokens: config.maxTokens ?? this.maxTokens,
+        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
+        customStopTriggers: config.stopStrings ?? this.stopStrings
+      };
+
+      // Add random seed if temperature > 0 and no seed specified
+      // This ensures randomness works properly
+      if (promptOptions.temperature > 0 && config.seed === undefined) {
+        promptOptions.seed = Math.floor(Math.random() * 1000000);
+      } else if (config.seed !== undefined) {
+        promptOptions.seed = config.seed;
+      }
+
+      // Generate response using prompt
+      const response = await this._chatSession.prompt('', promptOptions);
+
+      // Return as AIMessage for consistency
+      return new AIMessage(response);
+    } catch (error) {
+      throw new Error(`Generation failed: ${error.message}`);
+    }
+  }
+}
+```
+
+**Critical details**:
+- Always clears and sets system prompt (prevents contamination)
+- Adds random seed for proper temperature behavior
+- Uses `customStopTriggers` (correct parameter name)
+- Supports `clearHistory` for batch processing
+
+### Step 5: Batch Processing with History Isolation
+
+```javascript
+export class LlamaCppLLM extends Runnable {
+  // ... previous code ...
+
+  /**
+   * Batch processing with history isolation
+   * 
+   * Processes multiple inputs sequentially, ensuring each gets 
+   * a clean chat history to prevent contamination.
+   */
+  async batch(inputs, config = {}) {
+    const results = [];
+    for (const input of inputs) {
+      // Clear history before each batch item
+      const result = await this._call(input, { 
+        ...config, 
+        clearHistory: true 
+      });
+      results.push(result);
+    }
+    return results;
+  }
+}
+```
+
+**Why sequential processing?**
+- Local models can't run truly in parallel
+- Sequential ensures proper history isolation
+- Each item gets a clean slate
+
+### Step 6: Streaming Support
+
+For real-time output (like ChatGPT's typing effect):
+
+```javascript
+export class LlamaCppLLM extends Runnable {
+  // ... previous code ...
+
+  async *_stream(input, config = {}) {
+    await this._initialize();
+
+    // Clear history if requested
+    if (config.clearHistory) {
+      this._chatSession.setChatHistory([]);
+    }
+
+    // Handle input types (same as _call)
+    let messages;
+    if (typeof input === 'string') {
+      messages = [new HumanMessage(input)];
+    } else if (Array.isArray(input)) {
+      messages = input;
+    } else {
+      throw new Error('Input must be string or array of messages');
+    }
+
+    // Extract system message
+    const systemMessages = messages.filter(msg => msg._type === 'system');
+    const systemPrompt = systemMessages.length > 0
+      ? systemMessages[0].content
+      : '';
+
+    // Set up chat history
+    const chatHistory = this._messagesToChatHistory(messages);
+    this._chatSession.setChatHistory(chatHistory);
+
+    // ALWAYS set system prompt
+    this._chatSession.systemPrompt = systemPrompt;
+
+    try {
+      // Build prompt options
+      const promptOptions = {
+        temperature: config.temperature ?? this.temperature,
+        topP: config.topP ?? this.topP,
+        topK: config.topK ?? this.topK,
+        maxTokens: config.maxTokens ?? this.maxTokens,
+        repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
+        customStopTriggers: config.stopStrings ?? this.stopStrings
+      };
+
+      // Add random seed
+      if (promptOptions.temperature > 0 && config.seed === undefined) {
+        promptOptions.seed = Math.floor(Math.random() * 1000000);
+      } else if (config.seed !== undefined) {
+        promptOptions.seed = config.seed;
+      }
+
+      // Use onTextChunk callback to collect chunks
+      const self = this;
+      promptOptions.onTextChunk = (chunk) => {
+        self._currentStreamChunks = self._currentStreamChunks || [];
+        self._currentStreamChunks.push(chunk);
+      };
+
+      // Initialize chunk collection
+      this._currentStreamChunks = [];
+
+      // Start generation
+      const responsePromise = this._chatSession.prompt('', promptOptions);
+
+      // Yield chunks as they become available
+      let lastYieldedIndex = 0;
+
+      // Poll for new chunks
+      while (true) {
+        // Yield any new chunks
+        while (lastYieldedIndex < this._currentStreamChunks.length) {
+          yield new AIMessage(this._currentStreamChunks[lastYieldedIndex], {
+            additionalKwargs: { chunk: true }
+          });
+          lastYieldedIndex++;
+        }
+
+        // Check if generation is complete
+        const isDone = await Promise.race([
+          responsePromise.then(() => true),
+          new Promise(resolve => setTimeout(() => resolve(false), 10))
+        ]);
+
+        if (isDone) {
+          // Yield any remaining chunks
+          while (lastYieldedIndex < this._currentStreamChunks.length) {
+            yield new AIMessage(this._currentStreamChunks[lastYieldedIndex], {
+              additionalKwargs: { chunk: true }
+            });
+            lastYieldedIndex++;
+          }
+          break;
+        }
+      }
+
+      // Wait for completion
+      await responsePromise;
+
+      // Clean up
+      delete this._currentStreamChunks;
+
+    } catch (error) {
+      throw new Error(`Streaming failed: ${error.message}`);
+    }
+  }
+}
+```
+
+**Streaming challenges**:
+- `onTextChunk` is a synchronous callback
+- Can't yield directly from callback
+- Use polling mechanism to yield as chunks arrive
+- 10ms polling interval balances responsiveness vs CPU usage
 
 ## Real-World Examples
 
@@ -666,7 +544,7 @@ export default LlamaCppLLM;
 
 ```javascript
 const llm = new LlamaCppLLM({
-  modelPath: './models/llama-3.1-8b.gguf',
+  modelPath: './models/Meta-Llama-3.1-8B-Instruct-Q5_K_S.gguf',
   temperature: 0.7,
   maxTokens: 100
 });
@@ -676,83 +554,89 @@ const response = await llm.invoke("What is 2+2?");
 console.log(response.content); // "2+2 equals 4."
 ```
 
-### Example 2: Conversation with Messages
+### Example 2: Conversation with System Prompt
 
 ```javascript
-const conversation = [
+const messages = [
   new SystemMessage("You are a helpful math tutor."),
-  new HumanMessage("Explain what a prime number is"),
-  new AIMessage("A prime number is a natural number greater than 1 that has no positive divisors other than 1 and itself."),
-  new HumanMessage("Is 17 prime?")
+  new HumanMessage("What is 5*5?")
 ];
 
-const response = await llm.invoke(conversation);
-console.log(response.content); 
-// "Yes, 17 is prime because it can only be divided by 1 and 17."
+const response = await llm.invoke(messages);
+console.log(response.content);
+// "5 times 5 is 25. Here's a simple explanation..."
 ```
 
-### Example 3: Streaming Output
+### Example 3: Using Qwen Chat Wrapper
 
 ```javascript
+import { QwenChatWrapper } from 'node-llama-cpp';
+
 const llm = new LlamaCppLLM({
-  modelPath: './models/llama-3.1-8b.gguf'
+  modelPath: './models/Qwen3-1.7B-Q6_K.gguf',
+  temperature: 0.7,
+  chatWrapper: new QwenChatWrapper({
+    thoughts: 'discourage'  // Prevents thinking tokens
+  })
 });
 
+const response = await llm.invoke("What is AI?");
+// Response won't include <think> tokens
+```
+
+### Example 4: Temperature Comparison
+
+```javascript
+const question = "Give me one adjective to describe winter:";
+
+// Low temperature - consistent answers
+llm._chatSession.setChatHistory([]);
+const lowTemp = await llm.invoke(question, { temperature: 0.1 });
+// Likely: "cold"
+
+// High temperature - varied answers  
+llm._chatSession.setChatHistory([]);
+const highTemp = await llm.invoke(question, { temperature: 0.9 });
+// Could be: "frosty", "snowy", "icy", "chilly"
+```
+
+### Example 5: Streaming Output
+
+```javascript
 console.log('Response: ');
-for await (const chunk of llm.stream("Write a haiku about coding")) {
-  if (chunk.additionalKwargs.chunk) {
-    process.stdout.write(chunk.content);
-  }
+for await (const chunk of llm.stream("Tell me a fun fact about space")) {
+  process.stdout.write(chunk.content); // No newline
 }
 console.log('\n');
 
-// Output (streaming in real-time):
-// Lines of code flow
-// Like rivers to the sea
-// Logic makes it so
+// Output streams in real-time as it's generated
 ```
 
-You can also use callbacks for more control:
+### Example 6: Batch Processing
 
 ```javascript
-const llm = new LlamaCppLLM({
-  modelPath: './models/llama-3.1-8b.gguf'
+const questions = [
+  "What is Python?",
+  "What is JavaScript?",
+  "What is Rust?"
+];
+
+const answers = await llm.batch(questions);
+
+questions.forEach((q, i) => {
+  console.log(`Q: ${q}`);
+  console.log(`A: ${answers[i].content}`);
+  console.log();
 });
 
-let response = '';
-await llm.invoke("Write a haiku about coding", {
-  callbacks: [{
-    handleLLMNewToken(token) {
-      process.stdout.write(token);
-      response += token;
-    }
-  }]
-});
-console.log('\nFinal response:', response);
+// Each answer is independent - no history contamination!
 ```
 
-### Example 4: Temperature Control
-
-```javascript
-// Low temperature (more deterministic)
-const creative = await llm.invoke(
-  "Complete: Once upon a time",
-  { temperature: 0.2 }
-);
-
-// High temperature (more creative)
-const deterministic = await llm.invoke(
-  "Complete: Once upon a time",
-  { temperature: 1.2 }
-);
-```
-
-### Example 5: Using in a Chain
+### Example 7: Using in a Pipeline
 
 ```javascript
 import { PromptTemplate } from '../prompts/prompt-template.js';
 
-// Create a translation chain
 const prompt = PromptTemplate.fromTemplate(
   "Translate the following to {language}: {text}"
 );
@@ -765,26 +649,6 @@ const result = await chain.invoke({
 });
 
 console.log(result.content); // "Hola, ¿cómo estás?"
-```
-
-### Example 6: Batch Processing
-
-```javascript
-const questions = [
-  "What is 2+2?",
-  "What is 3*3?",
-  "What is 10/2?"
-];
-
-const messages = questions.map(q => [
-  new SystemMessage("You are a calculator"),
-  new HumanMessage(q)
-]);
-
-const answers = await llm.batch(messages);
-answers.forEach((answer, i) => {
-  console.log(`${questions[i]} = ${answer.content}`);
-});
 ```
 
 ## Advanced Patterns
@@ -860,7 +724,6 @@ class LlamaCppLLMWithCounting extends LlamaCppLLM {
 
     this.totalTokens += promptTokens + completionTokens;
 
-    // Add to result metadata
     result.additionalKwargs.usage = {
       promptTokens,
       completionTokens,
@@ -872,31 +735,6 @@ class LlamaCppLLMWithCounting extends LlamaCppLLM {
 
   getUsage() {
     return { totalTokens: this.totalTokens };
-  }
-}
-```
-
-### Pattern 4: Caching
-
-```javascript
-class CachedLLM extends LlamaCppLLM {
-  constructor(options) {
-    super(options);
-    this.cache = new Map();
-  }
-
-  async _call(input, config = {}) {
-    const key = JSON.stringify({ input, config });
-
-    if (this.cache.has(key)) {
-      console.log('Cache hit!');
-      return this.cache.get(key);
-    }
-
-    const result = await super._call(input, config);
-    this.cache.set(key, result);
-
-    return result;
   }
 }
 ```
@@ -918,6 +756,9 @@ const messages = [
   new HumanMessage("Hi")
 ];
 
+// Clear history for independent calls
+const response = await llm.invoke(messages, { clearHistory: true });
+
 // Handle errors gracefully
 try {
   const result = await llm.invoke(messages);
@@ -935,10 +776,13 @@ for (const question of questions) {
   await llm.invoke(question); // Loads model every time!
 }
 
-// Don't forget error handling
-const result = await llm.invoke(prompt); // Can crash your app
+// Don't forget to clear history in batch processing
+// This will cause history contamination!
+for (const q of questions) {
+  await llm.invoke(q); // Sees all previous questions!
+}
 
-// Don't ignore cleanup
+// Don't forget cleanup
 // Missing: await llm.dispose()
 ```
 
@@ -955,16 +799,16 @@ await llm._initialize(); // Force load now
 await llm.invoke("Fast response!");
 ```
 
-### Tip 2: Batch Similar Requests
+### Tip 2: Use Batch Properly
 
 ```javascript
-// Slow: Sequential
-for (const q of questions) {
-  await llm.invoke(q);
-}
+// This correctly isolates each question
+const answers = await llm.batch(questions);
 
-// Fast: Parallel
-await llm.batch(questions);
+// Not: Sequential with contamination
+for (const q of questions) {
+  await llm.invoke(q); // History builds up!
+}
 ```
 
 ### Tip 3: Adjust Context Size
@@ -984,7 +828,7 @@ const fastLLM = new LlamaCppLLM({
 const fact = await llm.invoke(query, { temperature: 0.1 });
 
 // Creative writing: high temperature
-const story = await llm.invoke(query, { temperature: 1.0 });
+const story = await llm.invoke(query, { temperature: 0.9 });
 ```
 
 ## Debugging Tips
@@ -998,22 +842,18 @@ const llm = new LlamaCppLLM({
 });
 ```
 
-### Tip 2: Inspect Raw Prompts
+### Tip 2: Test History Isolation
 
 ```javascript
-// Add a debug method
-class DebugLLM extends LlamaCppLLM {
-  async _call(input, config) {
-    const prompt = this._messagesToPrompt(
-      Array.isArray(input) ? input : [new HumanMessage(input)]
-    );
-    console.log('Prompt:\n', prompt);
-    return await super._call(input, config);
-  }
-}
+// Test batch processing
+const questions = ["Q1", "Q2", "Q3"];
+const answers = await llm.batch(questions);
+
+// Each answer should be independent
+// If Q2 mentions Q1, history contamination occurred!
 ```
 
-### Tip 3: Test Streaming
+### Tip 3: Verify Streaming
 
 ```javascript
 // Verify streaming works
@@ -1025,129 +865,133 @@ for await (const chunk of llm.stream("Count to 5")) {
 
 ## Common Mistakes
 
-### ❌ Mistake 1: Not Handling Model Load Time
+### ❌ Mistake 1: Not Clearing History in Batches
 
 ```javascript
-// Bad: Assumes instant load
-const llm = new LlamaCppLLM({ modelPath: './model.gguf' });
-const result = await llm.invoke("Hi"); // First call waits 10+ seconds
+// Bad: History contamination
+const pipeline = formatter.pipe(llm).pipe(parser);
+const results = await pipeline.batch(inputs); // Q2 sees Q1!
 ```
 
-**Fix**: Preload or show loading indicator:
+**Fix**: The LlamaCppLLM.batch() method automatically clears history:
 ```javascript
-const llm = new LlamaCppLLM({ modelPath: './model.gguf' });
-console.log('Loading model...');
-await llm._initialize();
-console.log('Ready!');
+// Good: Each input is isolated
+const results = await llm.batch(inputs);
 ```
 
-### ❌ Mistake 2: Ignoring Context Limits
+### ❌ Mistake 2: Forgetting Random Seed
 
 ```javascript
-// Bad: Exceeds context window
-const hugeConversation = Array(1000).fill({ content: "message" });
-await llm.invoke(hugeConversation); // Will fail or truncate
+// Bad: Temperature doesn't work
+const response = await llm.invoke(prompt, { temperature: 0.9 });
+// Without random seed, might get same answer
 ```
 
-**Fix**: Manage conversation length:
+**Fix**: Our implementation automatically adds random seed:
 ```javascript
-// Keep only recent messages
-const recentMessages = conversation.slice(-10);
-await llm.invoke(recentMessages);
+// Good: Randomness works properly
+if (promptOptions.temperature > 0 && config.seed === undefined) {
+  promptOptions.seed = Math.floor(Math.random() * 1000000);
+}
 ```
 
-### ❌ Mistake 3: Wrong Message Types
+### ❌ Mistake 3: Not Setting System Prompt Properly
 
 ```javascript
-// Bad: Using raw strings instead of Messages
-await llm.invoke("System: You are helpful\nHuman: Hi");
+// Bad: System prompt persists between calls
+await llm.invoke([new SystemMessage("Be creative"), ...]);
+await llm.invoke([new HumanMessage("Hi")]); // Still "creative"!
 ```
 
-**Fix**: Use proper Message types:
+**Fix**: Always set system prompt (empty string to clear):
 ```javascript
-await llm.invoke([
-  new SystemMessage("You are helpful"),
-  new HumanMessage("Hi")
-]);
+// Good: Always explicitly set or clear
+this._chatSession.systemPrompt = systemPrompt || '';
 ```
 
 ## Mental Model
 
-Think of the LLM wrapper as a translator:
+Think of the LLM wrapper as managing a conversation session:
 
 ```
-You speak: "Messages"
-         ↓
-[LLM Wrapper translates to model's language]
-         ↓
-Model speaks: "Tokens"
-         ↓
-[LLM Wrapper translates back]
-         ↓
-You receive: "AIMessage"
+Call 1: [System: "Be helpful", User: "Hi"]
+        ↓
+      Model generates response
+        ↓
+      Returns: AIMessage("Hello!")
+
+Call 2: [User: "How are you?"]  
+        ↓
+      PROBLEM: Still has "Be helpful" system prompt!
+      PROBLEM: Might remember "Hi" conversation!
+        
+SOLUTION: Clear history + reset system prompt between calls
 ```
 
-The wrapper handles all the messy details of:
-- Loading models
-- Formatting prompts
-- Managing sessions
-- Cleaning responses
+The wrapper handles:
+- Loading models once
+- Converting Messages to chat history
+- Managing system prompts
+- Clearing history when needed
+- Streaming chunks
+- Random seeds for temperature
 - Error handling
-
-So you can focus on building your agent logic!
-
-## Exercises
-
-Practice building with the LLM wrapper:
-
-### Exercise 1: Build a Conversational LLM
-
-Create an LLM that maintains conversation history automatically.
-
-**Starter code**: `exercises/09-conversational-llm.js`
-
-### Exercise 2: Add Response Validation
-
-Build an LLM that validates responses match a schema.
-
-**Starter code**: `exercises/10-validated-llm.js`
-
-### Exercise 3: Implement Streaming Display
-
-Create a streaming response display with a progress indicator.
-
-**Starter code**: `exercises/11-streaming-display.js`
-
-### Exercise 4: Build a Model Router
-
-Create a router that selects different models based on query type.
-
-**Starter code**: `exercises/12-model-router.js`
 
 ## Summary
 
-Congratulations! You now understand how to wrap a complex LLM library as a clean, composable Runnable.
+Congratulations! You now understand how to wrap a complex LLM library as a clean, composable Runnable with proper state management.
 
 ### Key Takeaways
 
-1. **Abstraction hides complexity**: Users don't need to know about contexts, sessions, or cleanup
-2. **Lazy loading saves time**: Load models only when needed
-3. **Messages enable structure**: Proper conversation formatting
-4. **Streaming improves UX**: Real-time output feels responsive
-5. **Configuration enables flexibility**: Temperature, tokens, context size
-6. **Error handling prevents crashes**: Always try/catch and cleanup
-7. **Resource management matters**: Dispose of models when done
+1. **Lazy loading saves time**: Load models only when needed
+2. **Messages enable structure**: Proper conversation formatting
+3. **History isolation prevents bugs**: Critical for batch processing
+4. **System prompts must be managed**: Always set or clear explicitly
+5. **Streaming improves UX**: Real-time output feels responsive
+6. **Random seeds enable temperature**: Required for randomness
+7. **Chat wrappers add flexibility**: Support different models
+8. **Sequential batch processing**: Local models can't truly parallelize
 
 ### What You Built
 
-A production-ready LLM wrapper that:
+A LLM wrapper that:
 - ✅ Loads models lazily
 - ✅ Handles Messages properly
+- ✅ Manages chat history correctly
+- ✅ Isolates batches
 - ✅ Supports streaming
-- ✅ Configurable generation
-- ✅ Composes with other Runnables
-- ✅ Manages resources
+- ✅ Handles system prompts
+- ✅ Supports chat wrappers
+- ✅ Adds random seeds for temperature
 - ✅ Provides good error messages
+
+### Critical Implementation Details
+
+```javascript
+// 1. Always clear and set system prompt
+this._chatSession.systemPrompt = systemPrompt || '';
+
+// 2. Use clearHistory for batch isolation
+async batch(inputs, config = {}) {
+  const results = [];
+  for (const input of inputs) {
+    const result = await this._call(input, { 
+      ...config, 
+      clearHistory: true 
+    });
+    results.push(result);
+  }
+  return results;
+}
+
+// 3. Add random seed for temperature
+if (promptOptions.temperature > 0 && config.seed === undefined) {
+  promptOptions.seed = Math.floor(Math.random() * 1000000);
+}
+
+// 4. Use correct parameter names
+customStopTriggers: config.stopStrings ?? this.stopStrings
+```
 
 ### What's Next
 
@@ -1163,27 +1007,32 @@ In the next lesson, we'll explore **Context & Configuration** - how to pass stat
 
 ## Additional Resources
 
-- [node-llama-cpp Documentation](https://github.com/withcatai/node-llama-cpp)
+- [node-llama-cpp Documentation](https://node-llama-cpp.withcat.ai)
+- [Chat Wrappers Guide](https://node-llama-cpp.withcat.ai/guide/chat-wrapper)
+- [Temperature Guide](https://node-llama-cpp.withcat.ai/guide/chat-session#temperature)
 - [GGUF Model Format](https://huggingface.co/docs/hub/gguf)
-- [Temperature vs Top-P](https://docs.cohere.com/docs/controlling-generation-with-top-k-top-p)
 
 ## Questions & Discussion
 
-**Q: Why lazy loading instead of loading in constructor?**
+**Q: Why do we always set system prompt instead of only when present?**
 
-A: Model loading can take 10-30 seconds. If you load in the constructor, your app hangs during initialization. Lazy loading means the app starts instantly, and models load only when first used.
+A: To prevent contamination. If call 1 sets a system prompt but call 2 doesn't, call 2 would still use call 1's system prompt. Always setting (even to empty string) ensures clean state.
+
+**Q: Why sequential batch processing instead of parallel?**
+
+A: Local models (node-llama-cpp) can't run true parallel inference on a single model instance. The library serializes requests internally, so parallel Promise.all() provides no benefit and can cause race conditions on the shared chat session.
+
+**Q: Why do we need random seeds for temperature?**
+
+A: The node-llama-cpp library states: "The randomness of the temperature can be controlled by the seed parameter. Setting a specific seed and a specific temperature will yield the same response every time for the same input." Without a random seed, high temperature might still give deterministic results.
 
 **Q: Can I use multiple models simultaneously?**
 
 A: Yes! Each LlamaCppLLM instance can have a different model. Just be aware of memory constraints - each model takes several GB of RAM.
 
-**Q: How do I know what context size to use?**
+**Q: What's the difference between customStopTriggers and stopStrings?**
 
-A: Start with 4096 (default). Increase if you need longer conversations, decrease if you're low on memory. The model file often indicates its trained context size.
-
-**Q: What's the difference between temperature and top-p?**
-
-A: Both control randomness. Temperature affects the probability distribution (0 = deterministic, 2 = very random). Top-p limits vocabulary to most likely tokens. Use one or the other, not both at extreme values.
+A: `customStopTriggers` is the correct parameter name in node-llama-cpp. We accept `stopStrings` in our config for a more intuitive API, then map it to `customStopTriggers` internally.
 
 ---
 
