@@ -38,13 +38,27 @@ export class LlamaCppLLM extends Runnable {
    * @param {number} [options.batchSize=512] - Batch processing size
    * @param {boolean} [options.verbose=false] - Enable debug logging
    * @param {string[]} [options.stopStrings] - Strings that stop generation
-   * @param {string} [options.chatWrapper]
+   * @param {Object} [options.chatWrapper] - Custom chat wrapper instance (e.g., QwenChatWrapper)
+   *   - If not provided, the library will automatically select the best wrapper for your model
    *
    * @example Basic Setup
    * ```javascript
    * const llm = new LlamaCppLLM({
    *   modelPath: './models/llama-2-7b.gguf',
    *   temperature: 0.7
+   * });
+   * ```
+   *
+   * @example With Qwen Chat Wrapper (Discourage Thoughts)
+   * ```javascript
+   * import { QwenChatWrapper } from 'node-llama-cpp';
+   *
+   * const llm = new LlamaCppLLM({
+   *   modelPath: './models/Qwen3-1.7B-Q6_K.gguf',
+   *   temperature: 0.7,
+   *   chatWrapper: new QwenChatWrapper({
+   *     thoughts: 'discourage'
+   *   })
    * });
    * ```
    *
@@ -267,6 +281,7 @@ export class LlamaCppLLM extends Runnable {
    * @param {Object} [config={}] - Runtime configuration
    * @param {number} [config.temperature] - Override temperature for this call
    * @param {number} [config.maxTokens] - Override max tokens for this call
+   * @param {boolean} [config.clearHistory=false] - Clear chat history before this call
    * @returns {Promise<AIMessage>} Generated response as AIMessage
    *
    * @example String Input (Simplest)
@@ -293,6 +308,15 @@ export class LlamaCppLLM extends Runnable {
    * );
    * ```
    *
+   * @example Clear History Before Call
+   * ```javascript
+   * // Ensure fresh context with no prior conversation
+   * const response = await llm.invoke(
+   *   "What is AI?",
+   *   { clearHistory: true }
+   * );
+   * ```
+   *
    * @example In a Pipeline (Composition)
    * ```javascript
    * const pipeline = promptFormatter
@@ -305,6 +329,11 @@ export class LlamaCppLLM extends Runnable {
   async _call(input, config = {}) {
     // Ensure model is loaded (only happens once)
     await this._initialize();
+
+    // Clear history if requested (important for batch processing)
+    if (config.clearHistory) {
+      this._chatSession.setChatHistory([]);
+    }
 
     // Handle different input types
     let messages;
@@ -323,16 +352,14 @@ export class LlamaCppLLM extends Runnable {
     const systemMessages = messages.filter(msg => msg._type === 'system');
     const systemPrompt = systemMessages.length > 0
         ? systemMessages[0].content
-        : undefined;
+        : '';
 
     // Convert our Message objects to llama.cpp format
     const chatHistory = this._messagesToChatHistory(messages);
     this._chatSession.setChatHistory(chatHistory);
 
-    // Set system prompt if provided
-    if (systemPrompt) {
-      this._chatSession.systemPrompt = systemPrompt;
-    }
+    // ALWAYS set system prompt (either new value or empty string to clear)
+    this._chatSession.systemPrompt = systemPrompt;
 
     try {
       // Build prompt options
@@ -342,7 +369,7 @@ export class LlamaCppLLM extends Runnable {
         topK: config.topK ?? this.topK,
         maxTokens: config.maxTokens ?? this.maxTokens,
         repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
-        stopStrings: config.stopStrings ?? this.stopStrings
+        customStopTriggers: config.stopStrings ?? this.stopStrings
       };
 
       // Add random seed if temperature > 0 and no seed specified
@@ -353,26 +380,42 @@ export class LlamaCppLLM extends Runnable {
         promptOptions.seed = config.seed;
       }
 
-      // Generate response using promptWithMeta
-      const result = await this._chatSession.promptWithMeta('', promptOptions);
-
-      // Extract full response from the result
-      const fullResponse = result.response
-          .map((item) => {
-            if (typeof item === "string") {
-              return item;
-            } else if (item.type === "segment") {
-              return item.text;
-            }
-            return "";
-          })
-          .join("");
+      // Generate response using prompt (simpler than promptWithMeta for non-streaming)
+      const response = await this._chatSession.prompt('', promptOptions);
 
       // Return as AIMessage for consistency
-      return new AIMessage(fullResponse);
+      return new AIMessage(response);
     } catch (error) {
       throw new Error(`Generation failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Batch processing with history isolation
+   *
+   * Processes multiple inputs sequentially, ensuring each gets a clean chat history.
+   * Note: Local models process requests sequentially, so there's no performance
+   * benefit compared to calling invoke() multiple times.
+   *
+   * @async
+   * @param {Array<string|Array<Message>>} inputs - Array of inputs to process
+   * @param {Object} [config={}] - Runtime configuration
+   * @returns {Promise<Array<AIMessage>>} Array of generated responses
+   *
+   * @example
+   * ```javascript
+   * const questions = ["What is AI?", "What is ML?", "What is DL?"];
+   * const answers = await llm.batch(questions);
+   * ```
+   */
+  async batch(inputs, config = {}) {
+    const results = [];
+    for (const input of inputs) {
+      // Clear history before each batch item to prevent contamination
+      const result = await this._call(input, { ...config, clearHistory: true });
+      results.push(result);
+    }
+    return results;
   }
 
   /**
@@ -420,8 +463,13 @@ export class LlamaCppLLM extends Runnable {
    * }
    * ```
    */
-  async *_stream(input, config = {}) {
+  async* stream(input, config = {}) {
     await this._initialize();
+
+    // Clear history if requested
+    if (config.clearHistory) {
+      this._chatSession.setChatHistory([]);
+    }
 
     // Handle different input types (same as _call)
     let messages;
@@ -439,21 +487,16 @@ export class LlamaCppLLM extends Runnable {
     const systemMessages = messages.filter(msg => msg._type === 'system');
     const systemPrompt = systemMessages.length > 0
         ? systemMessages[0].content
-        : undefined;
+        : '';
 
     // Set up chat history
     const chatHistory = this._messagesToChatHistory(messages);
     this._chatSession.setChatHistory(chatHistory);
 
-    if (systemPrompt) {
-      this._chatSession.systemPrompt = systemPrompt;
-    }
+    // ALWAYS set system prompt (either new value or empty string to clear)
+    this._chatSession.systemPrompt = systemPrompt;
 
     try {
-      // Collect chunks in an array as they arrive
-      const chunks = [];
-      let isComplete = false;
-
       // Build prompt options
       const promptOptions = {
         temperature: config.temperature ?? this.temperature,
@@ -461,13 +504,7 @@ export class LlamaCppLLM extends Runnable {
         topK: config.topK ?? this.topK,
         maxTokens: config.maxTokens ?? this.maxTokens,
         repeatPenalty: config.repeatPenalty ?? this.repeatPenalty,
-        stopStrings: config.stopStrings ?? this.stopStrings,
-        // Collect chunks as they arrive
-        onResponseChunk: (chunk) => {
-          if (chunk.text) {
-            chunks.push(chunk.text);
-          }
-        }
+        customStopTriggers: config.stopStrings ?? this.stopStrings
       };
 
       // Add random seed if temperature > 0 and no seed specified
@@ -477,48 +514,58 @@ export class LlamaCppLLM extends Runnable {
         promptOptions.seed = config.seed;
       }
 
-      // Start the prompt (don't await yet)
-      const promptPromise = this._chatSession.promptWithMeta('', promptOptions)
-          .then(() => {
-            isComplete = true;
-          });
+      // Use onTextChunk callback to stream chunks as they arrive
+      const self = this;
+      promptOptions.onTextChunk = (chunk) => {
+        // This callback is synchronous, so we can't yield directly
+        // We'll collect chunks and yield them after
+        self._currentStreamChunks = self._currentStreamChunks || [];
+        self._currentStreamChunks.push(chunk);
+      };
+
+      // Initialize chunk collection
+      this._currentStreamChunks = [];
+
+      // Start generation (this will call onTextChunk as it generates)
+      const responsePromise = this._chatSession.prompt('', promptOptions);
 
       // Yield chunks as they become available
       let lastYieldedIndex = 0;
-      while (!isComplete || lastYieldedIndex < chunks.length) {
-        // Check if there are new chunks to yield
-        while (lastYieldedIndex < chunks.length) {
-          yield new AIMessage(chunks[lastYieldedIndex], {
+
+      // Poll for new chunks
+      while (true) {
+        // Yield any new chunks
+        while (lastYieldedIndex < this._currentStreamChunks.length) {
+          yield new AIMessage(this._currentStreamChunks[lastYieldedIndex], {
             additionalKwargs: { chunk: true }
           });
           lastYieldedIndex++;
         }
 
-        // Small delay to avoid busy waiting
-        if (!isComplete) {
-          await new Promise(resolve => setTimeout(resolve, 10));
+        // Check if generation is complete
+        const isDone = await Promise.race([
+          responsePromise.then(() => true),
+          new Promise(resolve => setTimeout(() => resolve(false), 10))
+        ]);
+
+        if (isDone) {
+          // Yield any remaining chunks
+          while (lastYieldedIndex < this._currentStreamChunks.length) {
+            yield new AIMessage(this._currentStreamChunks[lastYieldedIndex], {
+              additionalKwargs: { chunk: true }
+            });
+            lastYieldedIndex++;
+          }
+          break;
         }
       }
 
-      // Wait for the prompt to complete and get full response
-      const result = await promptPromise;
+      // Wait for the full response
+      await responsePromise;
 
-      // Build full response from segments
-      const fullResponse = result.response
-          .map((item) => {
-            if (typeof item === "string") {
-              return item;
-            } else if (item.type === "segment") {
-              return item.text;
-            }
-            return "";
-          })
-          .join("");
+      // Clean up
+      delete this._currentStreamChunks;
 
-      // Yield final complete message
-      yield new AIMessage(fullResponse, {
-        additionalKwargs: { final: true }
-      });
     } catch (error) {
       throw new Error(`Streaming failed: ${error.message}`);
     }

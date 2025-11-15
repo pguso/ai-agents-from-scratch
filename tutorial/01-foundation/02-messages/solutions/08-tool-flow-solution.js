@@ -1,5 +1,5 @@
 /**
- * Solution 4: Tool Call Flow
+ * Solution 8: Tool Call Flow
  *
  * This solution demonstrates:
  * - Complete agent conversation flow

@@ -1,5 +1,5 @@
 /**
- * Exercise 2: Build a Conversation Validator
+ * Exercise 6: Build a Conversation Validator
  *
  * Goal: Validate conversation structure and message sequences
  *

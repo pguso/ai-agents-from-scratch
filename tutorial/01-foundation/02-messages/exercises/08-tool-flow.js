@@ -1,5 +1,5 @@
 /**
- * Exercise 4: Simulate a Complete Tool Call Flow
+ * Exercise 8: Simulate a Complete Tool Call Flow
  *
  * Goal: Build a complete agent conversation with tool calls
  *

@@ -1,5 +1,5 @@
 /**
- * Solution 1: Message Formatter
+ * Solution 5: Message Formatter
  *
  * This solution demonstrates:
  * - Formatting timestamps

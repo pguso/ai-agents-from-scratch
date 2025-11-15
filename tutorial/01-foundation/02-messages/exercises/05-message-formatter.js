@@ -1,5 +1,5 @@
 /**
- * Exercise 1: Build a Message Formatter
+ * Exercise 5: Build a Message Formatter
  *
  * Goal: Create a function that formats messages for console display
  *

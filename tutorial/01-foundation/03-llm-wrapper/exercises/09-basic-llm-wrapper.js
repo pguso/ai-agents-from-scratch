@@ -1,5 +1,5 @@
 /**
- * Exercise 1: Basic LLM Setup
+ * Exercise 9: Basic LLM Setup
  *
  * Goal: Get comfortable with basic LlamaCppLLM usage
  *

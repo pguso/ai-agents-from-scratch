@@ -1,5 +1,5 @@
 /**
- * Solution 3: Chat History Manager
+ * Solution 7: Chat History Manager
  *
  * This solution demonstrates:
  * - Managing conversation state

@@ -1,5 +1,5 @@
 /**
- * Exercise 3: Create a Chat History Manager
+ * Exercise 7: Create a Chat History Manager
  *
  * Goal: Build a class to manage conversation history with persistence
  *

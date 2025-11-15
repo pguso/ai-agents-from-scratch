@@ -1,5 +1,5 @@
 /**
- * Solution 2: Conversation Validator
+ * Solution 6: Conversation Validator
  *
  * This solution demonstrates:
  * - Validating message structure

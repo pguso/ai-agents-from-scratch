@@ -1,5 +1,5 @@
 /**
- * Exercise 1 Solution: Basic LLM Setup
+ * Exercise 9 Solution: Basic LLM Setup
  */
 
 import {HumanMessage, SystemMessage, LlamaCppLLM} from '../../../../src/index.js';

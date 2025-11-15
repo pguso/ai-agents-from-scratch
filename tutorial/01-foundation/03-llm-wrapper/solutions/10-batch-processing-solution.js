@@ -1,5 +1,5 @@
 /**
- * Exercise 2 Solution: Batch Processing
+ * Exercise 10 Solution: Batch Processing
  */
 
 import {HumanMessage, SystemMessage, LlamaCppLLM} from '../../../../src/index.js';
