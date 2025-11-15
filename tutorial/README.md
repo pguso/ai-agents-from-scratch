@@ -27,12 +27,40 @@ Build it yourself. Understand it deeply. Use LangChain confidently.
 
 ## Learning Paths
 
-### Part 1: Foundation [Lesson 1 - 3 Available]
-Core abstractions and building blocks
-- [01-runnable](01-foundation/01-runnable/lesson.md) ← Start here
-- [02-messages](01-foundation/02-messages/lesson.md)
-- [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md)
-- [04-context](01-foundation/04-context/lesson.md) - Coming soon
+## Before You Start: Why This Tutorial Exists
+
+**You've just built AI agents with node-llama-cpp.** You know how to call LLMs, format prompts, parse responses, and create agent loops. That's awesome—you understand the fundamentals!
+
+**But you probably noticed some friction:**
+- Copy-pasting prompt formatting everywhere
+- Manually building message arrays each time
+- Hard to test individual components
+- Difficult to swap out models or reuse patterns
+- Agent code that works but feels messy
+
+**This tutorial fixes those problems.** Instead of jumping straight into LangChain's complex codebase, you'll rebuild its core patterns yourself with clear, educational code. You'll transform the script-style code you wrote into clean, composable abstractions.
+
+**The approach:**
+1. Start with problems you've already encountered
+2. Build the abstraction that solves each problem
+3. See how it connects to LangChain's API
+4. Understand frameworks deeply, use them confidently
+
+### Part 1: From Scripts to Abstractions
+
+Transform the patterns you already use into reusable components.
+
+**What you'll solve:**
+- **Agent code getting messy?** → Build the Runnable pattern for composability
+- **Message formatting tedious?** → Create Message types for structure
+- **Model switching hard?** → Design LLM wrappers for flexibility
+- **Managing conversation state?** → Implement Context for memory
+
+**Lessons:**
+- [01-runnable](01-foundation/01-runnable/lesson.md) - The composability pattern ← Start here
+- [02-messages](01-foundation/02-messages/lesson.md) - Structured conversation data
+- [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md) - Model abstraction layer
+- [04-context](01-foundation/04-context/lesson.md) - Conversation state management (Coming soon)
 
 ### Part 2: Composition [Coming Soon]
 Building chains and memory
