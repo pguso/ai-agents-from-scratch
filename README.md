@@ -44,7 +44,7 @@ node react-agent/react-agent.js
 Follow these examples in order to build understanding progressively:
 
 ### 1. **Introduction** - Basic LLM Interaction
-`intro/` | [Code Explanation](intro/CODE.md) | [Concepts](intro/CONCEPT.md)
+`intro/` | [Code Explanation](examples/01_intro/CODE.md) | [Concepts](examples/01_intro/CONCEPT.md)
 
 **What you'll learn:**
 - Loading and running a local LLM
@@ -55,7 +55,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 2. (Optional) **OpenAI Intro** - Using Proprietary Models
-`openai-intro/` | [Code Explanation](openai-intro/CODE.md) | [Concepts](openai-intro/CONCEPT.md)
+`openai-intro/` | [Code Explanation](examples/02_openai-intro/CODE.md) | [Concepts](examples/02_openai-intro/CONCEPT.md)
 
 **What you'll learn:**
 - How to call hosted LLMs (like GPT-4)
@@ -67,7 +67,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 3. **Translation** - System Prompts & Specialization
-`translation/` | [Code Explanation](translation/CODE.md) | [Concepts](translation/CONCEPT.md)
+`translation/` | [Code Explanation](examples/03_translation/CODE.md) | [Concepts](examples/03_translation/CONCEPT.md)
 
 **What you'll learn:**
 - Using system prompts to specialize agents
@@ -80,7 +80,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 4. **Think** - Reasoning & Problem Solving
-`think/` | [Code Explanation](think/CODE.md) | [Concepts](think/CONCEPT.md)
+`think/` | [Code Explanation](examples/04_think/CODE.md) | [Concepts](examples/04_think/CONCEPT.md)
 
 **What you'll learn:**
 - Configuring LLMs for logical reasoning
@@ -93,7 +93,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 5. **Batch** - Parallel Processing
-`batch/` | [Code Explanation](batch/CODE.md) | [Concepts](batch/CONCEPT.md)
+`batch/` | [Code Explanation](examples/05_batch/CODE.md) | [Concepts](examples/05_batch/CONCEPT.md)
 
 **What you'll learn:**
 - Processing multiple requests concurrently
@@ -106,7 +106,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 6. **Coding** - Streaming & Response Control
-`coding/` | [Code Explanation](coding/CODE.md) | [Concepts](coding/CONCEPT.md)
+`coding/` | [Code Explanation](examples/06_coding/CODE.md) | [Concepts](examples/06_coding/CONCEPT.md)
 
 **What you'll learn:**
 - Real-time streaming responses
@@ -119,7 +119,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 7. **Simple Agent** - Function Calling (Tools)
-`simple-agent/` | [Code Explanation](simple-agent/CODE.md) | [Concepts](simple-agent/CONCEPT.md)
+`simple-agent/` | [Code Explanation](examples/07_simple-agent/CODE.md) | [Concepts](examples/07_simple-agent/CONCEPT.md)
 
 **What you'll learn:**
 - Function calling / tool use fundamentals
@@ -134,7 +134,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 8. **Simple Agent with Memory** - Persistent State
-`simple-agent-with-memory/` | [Code Explanation](simple-agent-with-memory/CODE.md) | [Concepts](simple-agent-with-memory/CONCEPT.md)
+`simple-agent-with-memory/` | [Code Explanation](examples/08_simple-agent-with-memory/CODE.md) | [Concepts](examples/08_simple-agent-with-memory/CONCEPT.md)
 
 **What you'll learn:**
 - Persisting information across sessions
@@ -147,7 +147,7 @@ Follow these examples in order to build understanding progressively:
 ---
 
 ### 9. **ReAct Agent** - Reasoning + Acting
-`react-agent/` | [Code Explanation](react-agent/CODE.md) | [Concepts](react-agent/CONCEPT.md)
+`react-agent/` | [Code Explanation](examples/09_react-agent/CODE.md) | [Concepts](examples/09_react-agent/CONCEPT.md)
 
 **What you'll learn:**
 - ReAct pattern (Reason → Act → Observe)
