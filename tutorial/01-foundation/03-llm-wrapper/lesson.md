@@ -147,6 +147,7 @@ Let's build the LLM wrapper step by step.
 
 ### Step 1: The Base Structure
 
+**Location:** `src/llm/llama-cpp-llm.js`
 ```javascript
 import { Runnable } from './runnable.js';
 import { AIMessage } from './message.js';

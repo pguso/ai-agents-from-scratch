@@ -186,6 +186,7 @@ Let's build our message system from the ground up.
 
 Every message type will inherit from this base:
 
+**Location:** `src/core/message.js`
 ```javascript
 /**
  * BaseMessage - Foundation for all message types
@@ -265,6 +266,7 @@ export class BaseMessage {
 
 ### Step 2: System Message
 
+**Location:** `src/core/message.js`
 ```javascript
 /**
  * SystemMessage - Instructions for the AI
@@ -305,6 +307,7 @@ console.log(systemMsg.content); // "You are a expert..."
 
 ### Step 3: Human Message
 
+**Location:** `src/core/message.js`
 ```javascript
 /**
  * HumanMessage - User input
@@ -339,6 +342,7 @@ console.log(humanMsg.type); // "human"
 
 ### Step 4: AI Message (with Tool Calls)
 
+**Location:** `src/core/message.js`
 ```javascript
 /**
  * AIMessage - Assistant responses
@@ -409,6 +413,7 @@ console.log(aiMsg2.hasToolCalls()); // true
 
 ### Step 5: Tool Message
 
+**Location:** `src/core/message.js`
 ```javascript
 /**
  * ToolMessage - Tool execution results

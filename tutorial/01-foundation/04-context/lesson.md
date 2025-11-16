@@ -35,11 +35,11 @@ async function complexPipeline(input, temperature, callbacks, debug, userId) {
 ```
 
 Problems:
-- 😫 Every function signature becomes huge
-- 😫 Adding new config requires changing every function
-- 😫 Hard to add features like logging or metrics
-- 😫 Impossible to intercept at specific points
-- 😫 Can't pass user context through chains
+- Every function signature becomes huge
+- Adding new config requires changing every function
+- Hard to add features like logging or metrics
+- Impossible to intercept at specific points
+- Can't pass user context through chains
 
 ### The Solution: RunnableConfig
 
@@ -91,10 +91,10 @@ RunnableConfig is an object that flows through your entire pipeline, carrying:
 ```
 User calls: runnable.invoke(input, config)
                               ↓
-              ┌───────────────┴──────────────┐
-              │                              │
-         Config passed to every step         │
-              │                              │
+              ┌───────────────┴─────────────┐
+              │                             │
+         Config passed to every step        │
+              │                             │
     ┌─────────┼─────────┬──────────┬────────┼────┐
     │         │         │          │        │    │
   Step1    Step2     Step3      Step4    Step5  ...
@@ -118,6 +118,7 @@ User calls: runnable.invoke(input, config)
 
 ### Step 1: The RunnableConfig Object
 
+**Location:** `src/core/context.js`
 ```javascript
 /**
  * RunnableConfig - Configuration passed through chains

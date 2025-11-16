@@ -115,6 +115,7 @@ Let's build the `Runnable` class step by step.
 
 ### Step 1: The Base Structure
 
+**Location:** `src/core/runnable.js`
 ```javascript
 /**
  * Runnable - Base class for all composable components
@@ -247,6 +248,7 @@ export class Runnable {
 
 Now we need to create `RunnableSequence`:
 
+**Location:** `src/core/runnable.js`
 ```javascript
 /**
  * RunnableSequence - Chains multiple Runnables together
