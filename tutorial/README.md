@@ -60,7 +60,7 @@ Transform the patterns you already use into reusable components.
 - [01-runnable](01-foundation/01-runnable/lesson.md) - The composability pattern ← Start here
 - [02-messages](01-foundation/02-messages/lesson.md) - Structured conversation data
 - [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md) - Model abstraction layer
-- [04-context](01-foundation/04-context/lesson.md) - Conversation state management (Coming soon)
+- [04-context](01-foundation/04-context/lesson.md) - Conversation state management 
 
 ### Part 2: Composition [Coming Soon]
 Building chains and memory
@@ -91,7 +91,7 @@ State machines and workflows
 
 Complete these capstone projects to solidify your learning:
 
-- [Specialized Chatbot](projects/specialized-chatbot/) - Coming soon
+- [Smart Email Classifier](projects/01-smart-email-classifier)
 - [Research Agent](projects/research-agent/) - Coming soon
 - [Task Automation](projects/task-automation/) - Coming soon
 - [Approval Workflow](projects/approval-workflow/) - Coming soon
