@@ -19,16 +19,16 @@ Without a proper context system:
 ```javascript
 // Bad: Configuration everywhere
 async function complexPipeline(input, temperature, callbacks, debug, userId) {
-  const result1 = await step1(input, temperature, debug);
-  callbacks.onStep('step1', result1);
-  
-  const result2 = await step2(result1, userId, debug);
-  callbacks.onStep('step2', result2);
-  
-  const result3 = await step3(result2, temperature, callbacks, debug);
-  callbacks.onStep('step3', result3);
-  
-  return result3;
+    const result1 = await step1(input, temperature, debug);
+    callbacks.onStep('step1', result1);
+
+    const result2 = await step2(result1, userId, debug);
+    callbacks.onStep('step2', result2);
+
+    const result3 = await step3(result2, temperature, callbacks, debug);
+    callbacks.onStep('step3', result3);
+
+    return result3;
 }
 
 // Every function needs to know about every configuration option!
@@ -48,10 +48,10 @@ With RunnableConfig:
 ```javascript
 // Good: Config flows automatically
 const config = {
-  temperature: 0.7,
-  callbacks: [loggingCallback, metricsCallback],
-  metadata: { userId: 'user_123', sessionId: 'sess_456' },
-  tags: ['production', 'api-v2']
+    temperature: 0.7,
+    callbacks: [loggingCallback, metricsCallback],
+    metadata: { userId: 'user_123', sessionId: 'sess_456' },
+    tags: ['production', 'api-v2']
 };
 
 const result = await pipeline.invoke(input, config);
@@ -85,6 +85,25 @@ RunnableConfig is an object that flows through your entire pipeline, carrying:
 3. **Tags** - Labels for filtering and organization
 4. **Recursion Limit** - Prevent infinite loops
 5. **Runtime Configuration** - Override default settings (temperature, max tokens)
+
+**📍 Where This Lives in the Framework:**
+
+Looking back at our framework structure from the main README, RunnableConfig is part of the **Core** module:
+
+```javascript
+// Core module (what we're building now)
+export {
+  Runnable,           // ← Lesson 1
+  RunnableSequence,   // ← Lesson 1
+  BaseMessage,        // ← Lesson 2
+  HumanMessage,       // ← Lesson 2
+  AIMessage,          // ← Lesson 2
+  SystemMessage,      // ← Lesson 2
+  RunnableConfig      // ← THIS LESSON (Lesson 4)
+} from './core/index.js';
+```
+
+RunnableConfig isn't a separate feature you add later - it's **foundational infrastructure** built into the Core module that every other part of the framework depends on. The callback system we're about to build is how this config becomes useful for observability.
 
 ### The Flow
 
@@ -170,6 +189,18 @@ export class RunnableConfig {
 
 ### Step 2: The Callback System
 
+**📍 How Callbacks Relate to the Framework:**
+
+Callbacks are the **mechanism** that makes RunnableConfig useful. They're not a separate module - they're the "hooks" that get triggered as your Runnables execute. Think of them as event listeners built into the Core module.
+
+**In the framework structure, callbacks support observability:**
+- They live in Core (used by every module)
+- Later modules like **Agents** and **Chains** use them for tracing
+- The **Utils** module's `CallbackManager` (which we'll see) is a helper for managing them
+
+Here's the base callback class:
+
+**Location:** `src/utils/callbacks.js`
 ```javascript
 /**
  * BaseCallback - Abstract callback handler
@@ -216,99 +247,104 @@ export class BaseCallback {
 ```
 invoke() called
       ↓
-   onStart()
+   onStart()      ← Before execution
       ↓
-   [execution]
+   [execution]    ← Your _call() method runs
       ↓
-   onEnd() or onError()
+   onEnd()        ← After success
+   or
+   onError()      ← After failure
 ```
+
+**Key insight:** Callbacks are optional observers - your code works fine without them, but they let you see what's happening.
 
 ### Step 3: CallbackManager
 
 Manages multiple callbacks and ensures they all get called:
 
+**Location:** `src/utils/callback-manager.js`
 ```javascript
 /**
  * CallbackManager - Manages multiple callbacks
  */
 export class CallbackManager {
-  constructor(callbacks = []) {
-    this.callbacks = callbacks;
-  }
-
-  /**
-   * Add a callback
-   */
-  add(callback) {
-    this.callbacks.push(callback);
-  }
-
-  /**
-   * Call onStart for all callbacks
-   */
-  async handleStart(runnable, input, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onStart(runnable, input, config))
-      )
-    );
-  }
-
-  /**
-   * Call onEnd for all callbacks
-   */
-  async handleEnd(runnable, output, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onEnd(runnable, output, config))
-      )
-    );
-  }
-
-  /**
-   * Call onError for all callbacks
-   */
-  async handleError(runnable, error, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onError(runnable, error, config))
-      )
-    );
-  }
-
-  /**
-   * Call onLLMNewToken for all callbacks
-   */
-  async handleLLMNewToken(token, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onLLMNewToken(token, config))
-      )
-    );
-  }
-
-  /**
-   * Call onChainStep for all callbacks
-   */
-  async handleChainStep(stepName, output, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onChainStep(stepName, output, config))
-      )
-    );
-  }
-
-  /**
-   * Safely call a callback (don't let one callback crash others)
-   */
-  async _safeCall(fn) {
-    try {
-      await fn();
-    } catch (error) {
-      console.error('Callback error:', error);
-      // Don't throw - callbacks shouldn't break the pipeline
+    constructor(callbacks = []) {
+        this.callbacks = callbacks;
     }
-  }
+
+    /**
+     * Add a callback
+     */
+    add(callback) {
+        this.callbacks.push(callback);
+    }
+
+    /**
+     * Call onStart for all callbacks
+     */
+    async handleStart(runnable, input, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onStart(runnable, input, config))
+            )
+        );
+    }
+
+    /**
+     * Call onEnd for all callbacks
+     */
+    async handleEnd(runnable, output, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onEnd(runnable, output, config))
+            )
+        );
+    }
+
+    /**
+     * Call onError for all callbacks
+     */
+    async handleError(runnable, error, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onError(runnable, error, config))
+            )
+        );
+    }
+
+    /**
+     * Call onLLMNewToken for all callbacks
+     */
+    async handleLLMNewToken(token, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onLLMNewToken(token, config))
+            )
+        );
+    }
+
+    /**
+     * Call onChainStep for all callbacks
+     */
+    async handleChainStep(stepName, output, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onChainStep(stepName, output, config))
+            )
+        );
+    }
+
+    /**
+     * Safely call a callback (don't let one callback crash others)
+     */
+    async _safeCall(fn) {
+        try {
+            await fn();
+        } catch (error) {
+            console.error('Callback error:', error);
+            // Don't throw - callbacks shouldn't break the pipeline
+        }
+    }
 }
 ```
 
@@ -318,50 +354,50 @@ export class CallbackManager {
 
 Update the Runnable base class to use config:
 
+**Location:** `src/core/runnable.js`
 ```javascript
 export class Runnable {
-  constructor() {
-    this._name = this.constructor.name;
-  }
-
-  /**
-   * Execute with config support
-   */
-  async invoke(input, config = {}) {
-    // Normalize config to RunnableConfig instance
-    const runnableConfig = config instanceof RunnableConfig 
-      ? config 
-      : new RunnableConfig(config);
-
-    // Create callback manager
-    const callbackManager = new CallbackManager(runnableConfig.callbacks);
-
-    try {
-      // Notify callbacks: starting
-      await callbackManager.handleStart(this, input, runnableConfig);
-
-      // Execute the runnable
-      const output = await this._call(input, runnableConfig);
-
-      // Notify callbacks: success
-      await callbackManager.handleEnd(this, output, runnableConfig);
-
-      return output;
-    } catch (error) {
-      // Notify callbacks: error
-      await callbackManager.handleError(this, error, runnableConfig);
-      throw error;
+    constructor() {
+        this.name = this.constructor.name;
     }
-  }
+    
+    /**
+     * Execute with config support
+     */
+    async invoke(input, config = {}) {
+        // Normalize config to RunnableConfig instance
+        const runnableConfig = config instanceof RunnableConfig
+            ? config
+            : new RunnableConfig(config);
 
-  /**
-   * Internal execution - subclasses implement this
-   */
-  async _call(input, config) {
-    throw new Error(`${this._name} must implement _call() method`);
-  }
+        // Create callback manager
+        const callbackManager = new CallbackManager(runnableConfig.callbacks);
 
-  // ... stream(), batch(), pipe() methods remain the same ...
+        try {
+            // Notify callbacks: starting
+            await callbackManager.handleStart(this, input, runnableConfig);
+
+            // Execute the runnable
+            const output = await this._call(input, runnableConfig);
+
+            // Notify callbacks: success
+            await callbackManager.handleEnd(this, output, runnableConfig);
+
+            return output;
+        } catch (error) {
+            // Notify callbacks: error
+            await callbackManager.handleError(this, error, runnableConfig);
+            throw error;
+        }
+    }
+
+    async _call(input, config) {
+        throw new Error(
+            `${this.name} must implement _call() method`
+        );
+    }
+
+    // ... stream(), batch(), pipe() methods remain the same ...
 }
 ```
 
@@ -377,41 +413,41 @@ Now every Runnable automatically:
 /**
  * ConsoleCallback - Logs to console
  */
-export class ConsoleCallback extends BaseCallback {
-  constructor(options = {}) {
-    super();
-    this.verbose = options.verbose ?? true;
-    this.colors = options.colors ?? true;
-  }
-
-  async onStart(runnable, input, config) {
-    if (this.verbose) {
-      console.log(`\n▶ Starting: ${runnable._name}`);
-      console.log(`  Input:`, this._format(input));
+export class ConsoleCallback extends Callbacks {
+    constructor(options = {}) {
+        super();
+        this.verbose = options.verbose ?? true;
+        this.colors = options.colors ?? true;
     }
-  }
 
-  async onEnd(runnable, output, config) {
-    if (this.verbose) {
-      console.log(`✓ Completed: ${runnable._name}`);
-      console.log(`  Output:`, this._format(output));
+    async onStart(runnable, input, config) {
+        if (this.verbose) {
+            console.log(`\n▶ Starting: ${runnable._name}`);
+            console.log(`  Input:`, this._format(input));
+        }
     }
-  }
 
-  async onError(runnable, error, config) {
-    console.error(`✗ Error in ${runnable._name}:`, error.message);
-  }
-
-  async onLLMNewToken(token, config) {
-    process.stdout.write(token);
-  }
-
-  _format(value) {
-    if (typeof value === 'string') {
-      return value.length > 100 ? value.substring(0, 97) + '...' : value;
+    async onEnd(runnable, output, config) {
+        if (this.verbose) {
+            console.log(`✓ Completed: ${runnable._name}`);
+            console.log(`  Output:`, this._format(output));
+        }
     }
-    return JSON.stringify(value, null, 2);
-  }
+
+    async onError(runnable, error, config) {
+        console.error(`✗ Error in ${runnable._name}:`, error.message);
+    }
+
+    async onLLMNewToken(token, config) {
+        process.stdout.write(token);
+    }
+
+    _format(value) {
+        if (typeof value === 'string') {
+            return value.length > 100 ? value.substring(0, 97) + '...' : value;
+        }
+        return JSON.stringify(value, null, 2);
+    }
 }
 ```
 
@@ -419,64 +455,64 @@ export class ConsoleCallback extends BaseCallback {
 /**
  * MetricsCallback - Tracks timing and counts
  */
-export class MetricsCallback extends BaseCallback {
-  constructor() {
-    super();
-    this.metrics = {
-      calls: {},
-      totalTime: {},
-      errors: {}
-    };
-    this.startTimes = new Map();
-  }
-
-  async onStart(runnable, input, config) {
-    const name = runnable._name;
-    this.startTimes.set(name, Date.now());
-    
-    this.metrics.calls[name] = (this.metrics.calls[name] || 0) + 1;
-  }
-
-  async onEnd(runnable, output, config) {
-    const name = runnable._name;
-    const startTime = this.startTimes.get(name);
-    
-    if (startTime) {
-      const duration = Date.now() - startTime;
-      this.metrics.totalTime[name] = (this.metrics.totalTime[name] || 0) + duration;
-      this.startTimes.delete(name);
+export class MetricsCallback extends Callbacks {
+    constructor() {
+        super();
+        this.metrics = {
+            calls: {},
+            totalTime: {},
+            errors: {}
+        };
+        this.startTimes = new Map();
     }
-  }
 
-  async onError(runnable, error, config) {
-    const name = runnable._name;
-    this.metrics.errors[name] = (this.metrics.errors[name] || 0) + 1;
-  }
+    async onStart(runnable, input, config) {
+        const name = runnable._name;
+        this.startTimes.set(name, Date.now());
 
-  getReport() {
-    const report = [];
-    
-    for (const [name, calls] of Object.entries(this.metrics.calls)) {
-      const totalTime = this.metrics.totalTime[name] || 0;
-      const avgTime = calls > 0 ? (totalTime / calls).toFixed(2) : 0;
-      const errors = this.metrics.errors[name] || 0;
-      
-      report.push({
-        runnable: name,
-        calls,
-        avgTime: `${avgTime}ms`,
-        totalTime: `${totalTime}ms`,
-        errors
-      });
+        this.metrics.calls[name] = (this.metrics.calls[name] || 0) + 1;
     }
-    
-    return report;
-  }
 
-  reset() {
-    this.metrics = { calls: {}, totalTime: {}, errors: {} };
-    this.startTimes.clear();
-  }
+    async onEnd(runnable, output, config) {
+        const name = runnable._name;
+        const startTime = this.startTimes.get(name);
+
+        if (startTime) {
+            const duration = Date.now() - startTime;
+            this.metrics.totalTime[name] = (this.metrics.totalTime[name] || 0) + duration;
+            this.startTimes.delete(name);
+        }
+    }
+
+    async onError(runnable, error, config) {
+        const name = runnable._name;
+        this.metrics.errors[name] = (this.metrics.errors[name] || 0) + 1;
+    }
+
+    getReport() {
+        const report = [];
+
+        for (const [name, calls] of Object.entries(this.metrics.calls)) {
+            const totalTime = this.metrics.totalTime[name] || 0;
+            const avgTime = calls > 0 ? (totalTime / calls).toFixed(2) : 0;
+            const errors = this.metrics.errors[name] || 0;
+
+            report.push({
+                runnable: name,
+                calls,
+                avgTime: `${avgTime}ms`,
+                totalTime: `${totalTime}ms`,
+                errors
+            });
+        }
+
+        return report;
+    }
+
+    reset() {
+        this.metrics = {calls: {}, totalTime: {}, errors: {}};
+        this.startTimes.clear();
+    }
 }
 ```
 
@@ -484,55 +520,55 @@ export class MetricsCallback extends BaseCallback {
 /**
  * FileCallback - Logs to file
  */
-export class FileCallback extends BaseCallback {
-  constructor(filename) {
-    super();
-    this.filename = filename;
-    this.logs = [];
-  }
+export class FileCallback extends Callbacks {
+    constructor(filename) {
+        super();
+        this.filename = filename;
+        this.logs = [];
+    }
 
-  async onStart(runnable, input, config) {
-    this.logs.push({
-      timestamp: new Date().toISOString(),
-      event: 'start',
-      runnable: runnable._name,
-      input: this._serialize(input)
-    });
-  }
+    async onStart(runnable, input, config) {
+        this.logs.push({
+            timestamp: new Date().toISOString(),
+            event: 'start',
+            runnable: runnable._name,
+            input: this._serialize(input)
+        });
+    }
 
-  async onEnd(runnable, output, config) {
-    this.logs.push({
-      timestamp: new Date().toISOString(),
-      event: 'end',
-      runnable: runnable._name,
-      output: this._serialize(output)
-    });
-  }
+    async onEnd(runnable, output, config) {
+        this.logs.push({
+            timestamp: new Date().toISOString(),
+            event: 'end',
+            runnable: runnable._name,
+            output: this._serialize(output)
+        });
+    }
 
-  async onError(runnable, error, config) {
-    this.logs.push({
-      timestamp: new Date().toISOString(),
-      event: 'error',
-      runnable: runnable._name,
-      error: error.message
-    });
-  }
+    async onError(runnable, error, config) {
+        this.logs.push({
+            timestamp: new Date().toISOString(),
+            event: 'error',
+            runnable: runnable._name,
+            error: error.message
+        });
+    }
 
-  async flush() {
-    const fs = await import('fs/promises');
-    await fs.writeFile(
-      this.filename,
-      JSON.stringify(this.logs, null, 2),
-      'utf-8'
-    );
-    this.logs = [];
-  }
+    async flush() {
+        const fs = await import('fs/promises');
+        await fs.writeFile(
+            this.filename,
+            JSON.stringify(this.logs, null, 2),
+            'utf-8'
+        );
+        this.logs = [];
+    }
 
-  _serialize(value) {
-    if (typeof value === 'string') return value;
-    if (value?.content) return value.content; // Message
-    return JSON.stringify(value);
-  }
+    _serialize(value) {
+        if (typeof value === 'string') return value;
+        if (value?.content) return value.content; // Message
+        return JSON.stringify(value);
+    }
 }
 ```
 
@@ -543,7 +579,7 @@ Here's the full context system:
 ```javascript
 /**
  * Context & Configuration System
- * 
+ *
  * @module core/context
  */
 
@@ -551,231 +587,231 @@ Here's the full context system:
  * RunnableConfig - Configuration passed through chains
  */
 export class RunnableConfig {
-  constructor(options = {}) {
-    this.callbacks = options.callbacks || [];
-    this.metadata = options.metadata || {};
-    this.tags = options.tags || [];
-    this.recursionLimit = options.recursionLimit ?? 25;
-    this.configurable = options.configurable || {};
-  }
+    constructor(options = {}) {
+        this.callbacks = options.callbacks || [];
+        this.metadata = options.metadata || {};
+        this.tags = options.tags || [];
+        this.recursionLimit = options.recursionLimit ?? 25;
+        this.configurable = options.configurable || {};
+    }
 
-  merge(other) {
-    return new RunnableConfig({
-      callbacks: [...this.callbacks, ...(other.callbacks || [])],
-      metadata: { ...this.metadata, ...(other.metadata || {}) },
-      tags: [...this.tags, ...(other.tags || [])],
-      recursionLimit: other.recursionLimit ?? this.recursionLimit,
-      configurable: { ...this.configurable, ...(other.configurable || {}) }
-    });
-  }
+    merge(other) {
+        return new RunnableConfig({
+            callbacks: [...this.callbacks, ...(other.callbacks || [])],
+            metadata: { ...this.metadata, ...(other.metadata || {}) },
+            tags: [...this.tags, ...(other.tags || [])],
+            recursionLimit: other.recursionLimit ?? this.recursionLimit,
+            configurable: { ...this.configurable, ...(other.configurable || {}) }
+        });
+    }
 
-  child(options = {}) {
-    return this.merge(new RunnableConfig(options));
-  }
+    child(options = {}) {
+        return this.merge(new RunnableConfig(options));
+    }
 }
 
 /**
  * BaseCallback - Base class for callbacks
  */
 export class BaseCallback {
-  async onStart(runnable, input, config) {}
-  async onEnd(runnable, output, config) {}
-  async onError(runnable, error, config) {}
-  async onLLMNewToken(token, config) {}
-  async onChainStep(stepName, output, config) {}
+    async onStart(runnable, input, config) {}
+    async onEnd(runnable, output, config) {}
+    async onError(runnable, error, config) {}
+    async onLLMNewToken(token, config) {}
+    async onChainStep(stepName, output, config) {}
 }
 
 /**
  * CallbackManager - Manages multiple callbacks
  */
 export class CallbackManager {
-  constructor(callbacks = []) {
-    this.callbacks = callbacks;
-  }
-
-  add(callback) {
-    this.callbacks.push(callback);
-  }
-
-  async handleStart(runnable, input, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onStart(runnable, input, config))
-      )
-    );
-  }
-
-  async handleEnd(runnable, output, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onEnd(runnable, output, config))
-      )
-    );
-  }
-
-  async handleError(runnable, error, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onError(runnable, error, config))
-      )
-    );
-  }
-
-  async handleLLMNewToken(token, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onLLMNewToken(token, config))
-      )
-    );
-  }
-
-  async handleChainStep(stepName, output, config) {
-    await Promise.all(
-      this.callbacks.map(cb => 
-        this._safeCall(() => cb.onChainStep(stepName, output, config))
-      )
-    );
-  }
-
-  async _safeCall(fn) {
-    try {
-      await fn();
-    } catch (error) {
-      console.error('Callback error:', error);
+    constructor(callbacks = []) {
+        this.callbacks = callbacks;
     }
-  }
+
+    add(callback) {
+        this.callbacks.push(callback);
+    }
+
+    async handleStart(runnable, input, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onStart(runnable, input, config))
+            )
+        );
+    }
+
+    async handleEnd(runnable, output, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onEnd(runnable, output, config))
+            )
+        );
+    }
+
+    async handleError(runnable, error, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onError(runnable, error, config))
+            )
+        );
+    }
+
+    async handleLLMNewToken(token, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onLLMNewToken(token, config))
+            )
+        );
+    }
+
+    async handleChainStep(stepName, output, config) {
+        await Promise.all(
+            this.callbacks.map(cb =>
+                this._safeCall(() => cb.onChainStep(stepName, output, config))
+            )
+        );
+    }
+
+    async _safeCall(fn) {
+        try {
+            await fn();
+        } catch (error) {
+            console.error('Callback error:', error);
+        }
+    }
 }
 
 /**
  * ConsoleCallback - Logs to console with colors
  */
 export class ConsoleCallback extends BaseCallback {
-  constructor(options = {}) {
-    super();
-    this.verbose = options.verbose ?? true;
-  }
-
-  async onStart(runnable, input, config) {
-    if (this.verbose) {
-      console.log(`\n▶ Starting: ${runnable._name}`);
-      console.log(`  Input:`, this._format(input));
-      if (config.metadata && Object.keys(config.metadata).length > 0) {
-        console.log(`  Metadata:`, config.metadata);
-      }
+    constructor(options = {}) {
+        super();
+        this.verbose = options.verbose ?? true;
     }
-  }
 
-  async onEnd(runnable, output, config) {
-    if (this.verbose) {
-      console.log(`✓ Completed: ${runnable._name}`);
-      console.log(`  Output:`, this._format(output));
+    async onStart(runnable, input, config) {
+        if (this.verbose) {
+            console.log(`\n▶ Starting: ${runnable._name}`);
+            console.log(`  Input:`, this._format(input));
+            if (config.metadata && Object.keys(config.metadata).length > 0) {
+                console.log(`  Metadata:`, config.metadata);
+            }
+        }
     }
-  }
 
-  async onError(runnable, error, config) {
-    console.error(`✗ Error in ${runnable._name}:`, error.message);
-  }
-
-  async onLLMNewToken(token, config) {
-    process.stdout.write(token);
-  }
-
-  _format(value) {
-    if (typeof value === 'string') {
-      return value.length > 100 ? value.substring(0, 97) + '...' : value;
+    async onEnd(runnable, output, config) {
+        if (this.verbose) {
+            console.log(`✓ Completed: ${runnable._name}`);
+            console.log(`  Output:`, this._format(output));
+        }
     }
-    if (value?.content) {
-      return value.content.substring(0, 100);
+
+    async onError(runnable, error, config) {
+        console.error(`✗ Error in ${runnable._name}:`, error.message);
     }
-    return JSON.stringify(value, null, 2);
-  }
+
+    async onLLMNewToken(token, config) {
+        process.stdout.write(token);
+    }
+
+    _format(value) {
+        if (typeof value === 'string') {
+            return value.length > 100 ? value.substring(0, 97) + '...' : value;
+        }
+        if (value?.content) {
+            return value.content.substring(0, 100);
+        }
+        return JSON.stringify(value, null, 2);
+    }
 }
 
 /**
  * MetricsCallback - Tracks performance metrics
  */
 export class MetricsCallback extends BaseCallback {
-  constructor() {
-    super();
-    this.metrics = {
-      calls: {},
-      totalTime: {},
-      errors: {}
-    };
-    this.startTimes = new Map();
-  }
-
-  async onStart(runnable, input, config) {
-    const key = `${runnable._name}_${Date.now()}_${Math.random()}`;
-    this.startTimes.set(key, { name: runnable._name, time: Date.now() });
-    
-    const name = runnable._name;
-    this.metrics.calls[name] = (this.metrics.calls[name] || 0) + 1;
-  }
-
-  async onEnd(runnable, output, config) {
-    const name = runnable._name;
-    
-    // Find the most recent start time for this runnable
-    let startTime = null;
-    for (const [key, value] of this.startTimes.entries()) {
-      if (value.name === name) {
-        startTime = value.time;
-        this.startTimes.delete(key);
-        break;
-      }
+    constructor() {
+        super();
+        this.metrics = {
+            calls: {},
+            totalTime: {},
+            errors: {}
+        };
+        this.startTimes = new Map();
     }
-    
-    if (startTime) {
-      const duration = Date.now() - startTime;
-      this.metrics.totalTime[name] = (this.metrics.totalTime[name] || 0) + duration;
+
+    async onStart(runnable, input, config) {
+        const key = `${runnable._name}_${Date.now()}_${Math.random()}`;
+        this.startTimes.set(key, { name: runnable._name, time: Date.now() });
+
+        const name = runnable._name;
+        this.metrics.calls[name] = (this.metrics.calls[name] || 0) + 1;
     }
-  }
 
-  async onError(runnable, error, config) {
-    const name = runnable._name;
-    this.metrics.errors[name] = (this.metrics.errors[name] || 0) + 1;
-  }
+    async onEnd(runnable, output, config) {
+        const name = runnable._name;
 
-  getReport() {
-    const report = [];
-    
-    for (const [name, calls] of Object.entries(this.metrics.calls)) {
-      const totalTime = this.metrics.totalTime[name] || 0;
-      const avgTime = calls > 0 ? (totalTime / calls).toFixed(2) : 0;
-      const errors = this.metrics.errors[name] || 0;
-      
-      report.push({
-        runnable: name,
-        calls,
-        avgTime: `${avgTime}ms`,
-        totalTime: `${totalTime}ms`,
-        errors,
-        successRate: calls > 0 ? `${((calls - errors) / calls * 100).toFixed(1)}%` : '0%'
-      });
+        // Find the most recent start time for this runnable
+        let startTime = null;
+        for (const [key, value] of this.startTimes.entries()) {
+            if (value.name === name) {
+                startTime = value.time;
+                this.startTimes.delete(key);
+                break;
+            }
+        }
+
+        if (startTime) {
+            const duration = Date.now() - startTime;
+            this.metrics.totalTime[name] = (this.metrics.totalTime[name] || 0) + duration;
+        }
     }
-    
-    return report;
-  }
 
-  printReport() {
-    console.log('\n📊 Performance Report:');
-    console.log('─'.repeat(80));
-    console.table(this.getReport());
-  }
+    async onError(runnable, error, config) {
+        const name = runnable._name;
+        this.metrics.errors[name] = (this.metrics.errors[name] || 0) + 1;
+    }
 
-  reset() {
-    this.metrics = { calls: {}, totalTime: {}, errors: {} };
-    this.startTimes.clear();
-  }
+    getReport() {
+        const report = [];
+
+        for (const [name, calls] of Object.entries(this.metrics.calls)) {
+            const totalTime = this.metrics.totalTime[name] || 0;
+            const avgTime = calls > 0 ? (totalTime / calls).toFixed(2) : 0;
+            const errors = this.metrics.errors[name] || 0;
+
+            report.push({
+                runnable: name,
+                calls,
+                avgTime: `${avgTime}ms`,
+                totalTime: `${totalTime}ms`,
+                errors,
+                successRate: calls > 0 ? `${((calls - errors) / calls * 100).toFixed(1)}%` : '0%'
+            });
+        }
+
+        return report;
+    }
+
+    printReport() {
+        console.log('\n📊 Performance Report:');
+        console.log('─'.repeat(80));
+        console.table(this.getReport());
+    }
+
+    reset() {
+        this.metrics = { calls: {}, totalTime: {}, errors: {} };
+        this.startTimes.clear();
+    }
 }
 
 export default {
-  RunnableConfig,
-  BaseCallback,
-  CallbackManager,
-  ConsoleCallback,
-  MetricsCallback
+    RunnableConfig,
+    BaseCallback,
+    CallbackManager,
+    ConsoleCallback,
+    MetricsCallback
 };
 ```
 
@@ -789,7 +825,7 @@ import { ConsoleCallback } from './context.js';
 const logger = new ConsoleCallback({ verbose: true });
 
 const config = {
-  callbacks: [logger]
+    callbacks: [logger]
 };
 
 // Every step will log
@@ -819,12 +855,12 @@ import { MetricsCallback } from './context.js';
 const metrics = new MetricsCallback();
 
 const config = {
-  callbacks: [metrics]
+    callbacks: [metrics]
 };
 
 // Run multiple times
 for (let i = 0; i < 10; i++) {
-  await chain.invoke(input, config);
+    await chain.invoke(input, config);
 }
 
 // Get performance report
@@ -846,12 +882,12 @@ Output:
 
 ```javascript
 const config = {
-  metadata: {
-    userId: 'user_123',
-    sessionId: 'sess_456',
-    requestId: 'req_789'
-  },
-  tags: ['production', 'api-v2']
+    metadata: {
+        userId: 'user_123',
+        sessionId: 'sess_456',
+        requestId: 'req_789'
+    },
+    tags: ['production', 'api-v2']
 };
 
 await agent.invoke(input, config);
@@ -868,7 +904,7 @@ const metrics = new MetricsCallback();
 const fileLogger = new FileCallback('./logs/agent.json');
 
 const config = {
-  callbacks: [logger, metrics, fileLogger]
+    callbacks: [logger, metrics, fileLogger]
 };
 
 await chain.invoke(input, config);
@@ -882,55 +918,55 @@ metrics.printReport();    // Show metrics
 
 ```javascript
 const llm = new LlamaCppLLM({
-  modelPath: './model.gguf',
-  temperature: 0.7  // default
+    modelPath: './model.gguf',
+    temperature: 0.7  // default
 });
 
 // Override at runtime
 const result1 = await llm.invoke(input, {
-  configurable: { temperature: 0.2 }  // more deterministic
+    configurable: { temperature: 0.2 }  // more deterministic
 });
 
 const result2 = await llm.invoke(input, {
-  configurable: { temperature: 1.2 }  // more creative
+    configurable: { temperature: 1.2 }  // more creative
 });
 ```
 
 ### Example 6: Custom Callback for API Logging
 
 ```javascript
-class APILoggerCallback extends BaseCallback {
-  constructor(apiKey) {
-    super();
-    this.apiKey = apiKey;
-  }
+class APILoggerCallback extends Callbacks {
+    constructor(apiKey) {
+        super();
+        this.apiKey = apiKey;
+    }
 
-  async onEnd(runnable, output, config) {
-    // Send to logging API
-    await fetch('https://api.yourservice.com/logs', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        runnable: runnable._name,
-        output: this._serialize(output),
-        metadata: config.metadata,
-        timestamp: new Date().toISOString()
-      })
-    });
-  }
+    async onEnd(runnable, output, config) {
+        // Send to logging API
+        await fetch('https://api.yourservice.com/logs', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                runnable: runnable._name,
+                output: this._serialize(output),
+                metadata: config.metadata,
+                timestamp: new Date().toISOString()
+            })
+        });
+    }
 
-  _serialize(output) {
-    if (output?.content) return output.content;
-    return String(output);
-  }
+    _serialize(output) {
+        if (output?.content) return output.content;
+        return String(output);
+    }
 }
 
 // Usage
 const apiLogger = new APILoggerCallback(process.env.API_KEY);
-const config = { callbacks: [apiLogger] };
+const config = {callbacks: [apiLogger]};
 await chain.invoke(input, config);
 ```
 
@@ -939,167 +975,128 @@ await chain.invoke(input, config);
 ### Pattern 1: Conditional Callbacks
 
 ```javascript
-class ConditionalCallback extends BaseCallback {
-  constructor(condition, callback) {
-    super();
-    this.condition = condition;
-    this.callback = callback;
-  }
-
-  async onEnd(runnable, output, config) {
-    if (this.condition(runnable, output, config)) {
-      await this.callback.onEnd(runnable, output, config);
+class ConditionalCallback extends Callbacks {
+    constructor(condition, callback) {
+        super();
+        this.condition = condition;
+        this.callback = callback;
     }
-  }
+
+    async onEnd(runnable, output, config) {
+        if (this.condition(runnable, output, config)) {
+            await this.callback.onEnd(runnable, output, config);
+        }
+    }
 }
 
 // Only log slow operations
 const slowLogger = new ConditionalCallback(
-  (runnable, output, config) => {
-    // Check if operation took > 1 second
-    return config.executionTime > 1000;
-  },
-  new ConsoleCallback()
+    (runnable, output, config) => {
+        // Check if operation took > 1 second
+        return config.executionTime > 1000;
+    },
+    new ConsoleCallback()
 );
 ```
 
 ### Pattern 2: Callback Composition
 
 ```javascript
-class CompositeCallback extends BaseCallback {
-  constructor(callbacks) {
-    super();
-    this.callbacks = callbacks;
-  }
-
-  async onStart(runnable, input, config) {
-    for (const cb of this.callbacks) {
-      await cb.onStart(runnable, input, config);
+class CompositeCallback extends Callbacks {
+    constructor(callbacks) {
+        super();
+        this.callbacks = callbacks;
     }
-  }
 
-  async onEnd(runnable, output, config) {
-    for (const cb of this.callbacks) {
-      await cb.onEnd(runnable, output, config);
+    async onStart(runnable, input, config) {
+        for (const cb of this.callbacks) {
+            await cb.onStart(runnable, input, config);
+        }
     }
-  }
 
-  async onError(runnable, error, config) {
-    for (const cb of this.callbacks) {
-      await cb.onError(runnable, error, config);
+    async onEnd(runnable, output, config) {
+        for (const cb of this.callbacks) {
+            await cb.onEnd(runnable, output, config);
+        }
     }
-  }
+
+    async onError(runnable, error, config) {
+        for (const cb of this.callbacks) {
+            await cb.onError(runnable, error, config);
+        }
+    }
 }
 
 // Combine multiple callbacks
 const composite = new CompositeCallback([
-  new ConsoleCallback(),
-  new MetricsCallback(),
-  new FileCallback('./logs.json')
+    new ConsoleCallback(),
+    new MetricsCallback(),
+    new FileCallback('./logs.json')
 ]);
 ```
 
 ### Pattern 3: Filtered Logging
 
 ```javascript
-class FilteredCallback extends BaseCallback {
-  constructor(filter, callback) {
-    super();
-    this.filter = filter;
-    this.callback = callback;
-  }
-
-  async onStart(runnable, input, config) {
-    if (this.filter(runnable._name, 'start')) {
-      await this.callback.onStart(runnable, input, config);
+class FilteredCallback extends Callbacks {
+    constructor(filter, callback) {
+        super();
+        this.filter = filter;
+        this.callback = callback;
     }
-  }
 
-  async onEnd(runnable, output, config) {
-    if (this.filter(runnable._name, 'end')) {
-      await this.callback.onEnd(runnable, output, config);
+    async onStart(runnable, input, config) {
+        if (this.filter(runnable._name, 'start')) {
+            await this.callback.onStart(runnable, input, config);
+        }
     }
-  }
+
+    async onEnd(runnable, output, config) {
+        if (this.filter(runnable._name, 'end')) {
+            await this.callback.onEnd(runnable, output, config);
+        }
+    }
 }
 
 // Only log LLM calls
 const llmOnly = new FilteredCallback(
-  (name, event) => name.includes('LLM'),
-  new ConsoleCallback()
+    (name, event) => name.includes('LLM'),
+    new ConsoleCallback()
 );
 ```
 
 ### Pattern 4: Callback with State
 
 ```javascript
-class StatefulCallback extends BaseCallback {
-  constructor() {
-    super();
-    this.state = {
-      callCount: 0,
-      totalTokens: 0,
-      errors: []
-    };
-  }
-
-  async onEnd(runnable, output, config) {
-    this.state.callCount++;
-    
-    if (output?.additionalKwargs?.usage) {
-      this.state.totalTokens += output.additionalKwargs.usage.totalTokens;
-    }
-  }
-
-  async onError(runnable, error, config) {
-    this.state.errors.push({
-      runnable: runnable._name,
-      error: error.message,
-      timestamp: Date.now()
-    });
-  }
-
-  getState() {
-    return { ...this.state };
-  }
-}
-```
-
-## Integration with Runnable
-
-Update Runnable to fully support config:
-
-```javascript
-export class Runnable {
-  async invoke(input, config = {}) {
-    // Normalize config
-    const runnableConfig = config instanceof RunnableConfig 
-      ? config 
-      : new RunnableConfig(config);
-
-    // Check recursion limit
-    const depth = runnableConfig.metadata._depth || 0;
-    if (depth > runnableConfig.recursionLimit) {
-      throw new Error('Recursion limit exceeded');
+class StatefulCallback extends Callbacks {
+    constructor() {
+        super();
+        this.state = {
+            callCount: 0,
+            totalTokens: 0,
+            errors: []
+        };
     }
 
-    // Create child config with incremented depth
-    const childConfig = runnableConfig.child({
-      metadata: { _depth: depth + 1 }
-    });
+    async onEnd(runnable, output, config) {
+        this.state.callCount++;
 
-    // Create callback manager
-    const callbackManager = new CallbackManager(childConfig.callbacks);
-
-    try {
-      await callbackManager.handleStart(this, input, childConfig);
-      const output = await this._call(input, childConfig);
-      await callbackManager.handleEnd(this, output, childConfig);
-      return output;
-    } catch (error) {
-      await callbackManager.handleError(this, error, childConfig);
-      throw error;
+        if (output?.additionalKwargs?.usage) {
+            this.state.totalTokens += output.additionalKwargs.usage.totalTokens;
+        }
     }
-  }
+
+    async onError(runnable, error, config) {
+        this.state.errors.push({
+            runnable: runnable._name,
+            error: error.message,
+            timestamp: Date.now()
+        });
+    }
+
+    getState() {
+        return {...this.state};
+    }
 }
 ```
 
@@ -1109,8 +1106,8 @@ export class Runnable {
 
 ```javascript
 const debugConfig = {
-  callbacks: [new ConsoleCallback({ verbose: true })],
-  tags: ['debug']
+    callbacks: [new ConsoleCallback({ verbose: true })],
+    tags: ['debug']
 };
 
 // See everything that happens
@@ -1121,15 +1118,15 @@ await agent.invoke(query, debugConfig);
 
 ```javascript
 const productionConfig = {
-  callbacks: [
-    new MetricsCallback(),
-    new APILoggerCallback(API_KEY)
-  ],
-  metadata: {
-    environment: 'production',
-    version: '1.2.3'
-  },
-  tags: ['production']
+    callbacks: [
+        new MetricsCallback(),
+        new APILoggerCallback(API_KEY)
+    ],
+    metadata: {
+        environment: 'production',
+        version: '1.2.3'
+    },
+    tags: ['production']
 };
 ```
 
@@ -1137,13 +1134,13 @@ const productionConfig = {
 
 ```javascript
 const configA = {
-  metadata: { variant: 'A' },
-  configurable: { temperature: 0.7 }
+    metadata: { variant: 'A' },
+    configurable: { temperature: 0.7 }
 };
 
 const configB = {
-  metadata: { variant: 'B' },
-  configurable: { temperature: 0.9 }
+    metadata: { variant: 'B' },
+    configurable: { temperature: 0.9 }
 };
 
 // Track which performs better
@@ -1153,18 +1150,18 @@ const configB = {
 
 ```javascript
 const userConfig = {
-  metadata: {
-    userId: req.userId,
-    sessionId: req.sessionId,
-    plan: req.user.plan // 'free', 'pro', 'enterprise'
-  }
+    metadata: {
+        userId: req.userId,
+        sessionId: req.sessionId,
+        plan: req.user.plan // 'free', 'pro', 'enterprise'
+    }
 };
 
 // Different behavior based on user plan
 if (userConfig.metadata.plan === 'free') {
-  userConfig.configurable = { maxTokens: 100 };
+    userConfig.configurable = { maxTokens: 100 };
 } else if (userConfig.metadata.plan === 'pro') {
-  userConfig.configurable = { maxTokens: 500 };
+    userConfig.configurable = { maxTokens: 500 };
 }
 ```
 
@@ -1175,8 +1172,8 @@ if (userConfig.metadata.plan === 'free') {
 ```javascript
 // Use config for cross-cutting concerns
 const config = {
-  callbacks: [logger, metrics],
-  metadata: { userId, sessionId }
+    callbacks: [logger, metrics],
+    metadata: { userId, sessionId }
 };
 
 // Let config flow automatically
@@ -1207,22 +1204,22 @@ config.metadata.foo = 'bar'; // Bad! Create new config instead
 ### Tip 1: Add Timestamps
 
 ```javascript
-class TimestampCallback extends BaseCallback {
-  async onStart(runnable, input, config) {
-    console.log(`[${new Date().toISOString()}] ${runnable._name} started`);
-  }
+class TimestampCallback extends Callbacks {
+    async onStart(runnable, input, config) {
+        console.log(`[${new Date().toISOString()}] ${runnable._name} started`);
+    }
 }
 ```
 
 ### Tip 2: Stack Traces in Callbacks
 
 ```javascript
-class DebugCallback extends BaseCallback {
-  async onError(runnable, error, config) {
-    console.error('Full stack trace:');
-    console.error(error.stack);
-    console.error('Config:', config);
-  }
+class DebugCallback extends Callbacks {
+    async onError(runnable, error, config) {
+        console.error('Full stack trace:');
+        console.error(error.stack);
+        console.error('Config:', config);
+    }
 }
 ```
 
@@ -1231,12 +1228,12 @@ class DebugCallback extends BaseCallback {
 ```javascript
 // Only show LLM operations
 const config = {
-  callbacks: [
-    new FilteredCallback(
-      name => name.includes('LLM'),
-      new ConsoleCallback()
-    )
-  ]
+    callbacks: [
+        new FilteredCallback(
+            name => name.includes('LLM'),
+            new ConsoleCallback()
+        )
+    ]
 };
 ```
 
@@ -1244,29 +1241,22 @@ const config = {
 
 Practice building with context and callbacks:
 
-### Exercise 1: Build a Token Counter Callback
+### Exercise 13: Build a Simple Logging Callback
+Understand the basic callback lifecycle.  
+**Starter code**: [`exercises/13-simple-logger.js`](exercises/13-simple-logger.js)
 
-Track total tokens used across all LLM calls.
+### Exercise 14: Build a Metrics Tracker with Metadata
+Learn to use config metadata and track metrics.  
+**Starter code**: [`exercises/14-metrics-metadata.js`](exercises/14-metrics-metadata.js)
 
-**Starter code**: `exercises/13-token-counter.js`
+### Exercise 15: Config Merging and Child Configs
+Understand how configs inherit and merge.  
+**Starter code**: [`exercises/15-retry-callback.js`](exercises/15-retry-callback.js)
 
-### Exercise 2: Create a Rate Limiter
+### Exercise 16: Runtime Configuration Override
+Learn to override LLM settings at runtime.  
+**Starter code**: [`exercises/16-runtime-config.js`](exercises/16-runtime-config.js)
 
-Use callbacks to implement rate limiting.
-
-**Starter code**: `exercises/14-rate-limiter.js`
-
-### Exercise 3: Build a Retry Mechanism
-
-Implement automatic retries using callbacks.
-
-**Starter code**: `exercises/15-retry-callback.js`
-
-### Exercise 4: Create a Caching Callback
-
-Cache responses based on input.
-
-**Starter code**: `exercises/16-caching-callback.js`
 
 ## Summary
 
@@ -1284,7 +1274,7 @@ Congratulations! You've mastered the context and configuration system.
 
 ### What You Built
 
-A production-ready context system that:
+A context system that:
 - ✅ Flows config through chains automatically
 - ✅ Supports multiple callbacks
 - ✅ Tracks metrics and performance
@@ -1343,9 +1333,9 @@ A: You *can*, but you *shouldn't*. Callbacks are for observation, not transforma
 A: Use metadata:
 ```javascript
 const config = {
-  metadata: { 
-    authToken: req.headers.authorization 
-  }
+    metadata: {
+        authToken: req.headers.authorization
+    }
 };
 ```
 

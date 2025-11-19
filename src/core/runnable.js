@@ -1,3 +1,6 @@
+import RunnableConfig from "./context.js";
+import {CallbackManager} from "../utils/index.js";
+
 /**
  * Runnable - Base class for all composable components
  *
@@ -5,6 +8,10 @@
  * This base class provides invoke, stream, batch, and pipe.
  */
 export class Runnable {
+    constructor() {
+        this.name = this.constructor.name;
+    }
+
     /**
      * Main execution method - processes a single input
      *
@@ -13,8 +20,30 @@ export class Runnable {
      * @returns {Promise<any>} The processed output
      */
     async invoke(input, config = {}) {
-        // This is the public interface
-        return await this._call(input, config);
+        // Normalize config to RunnableConfig instance
+        const runnableConfig = config instanceof RunnableConfig
+            ? config
+            : new RunnableConfig(config);
+
+        // Create callback manager
+        const callbackManager = new CallbackManager(runnableConfig.callbacks);
+
+        try {
+            // Notify callbacks: starting
+            await callbackManager.handleStart(this, input, runnableConfig);
+
+            // Execute the runnable
+            const output = await this._call(input, runnableConfig);
+
+            // Notify callbacks: success
+            await callbackManager.handleEnd(this, output, runnableConfig);
+
+            return output;
+        } catch (error) {
+            // Notify callbacks: error
+            await callbackManager.handleError(this, error, runnableConfig);
+            throw error;
+        }
     }
 
     /**
@@ -26,7 +55,7 @@ export class Runnable {
      */
     async _call(input, config) {
         throw new Error(
-            `${this.constructor.name} must implement _call() method`
+            `${this.name} must implement _call() method`
         );
     }
 
