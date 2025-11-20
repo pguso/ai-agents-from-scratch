@@ -42,8 +42,8 @@ const CATEGORIES = {
 class EmailParserRunnable extends Runnable {
     async _call(input, config) {
         // TODO: Parse and structure the email
-        // Add timestamp
         // Validate required fields (subject, body, from)
+        // Add timestamp
         // Return structured email object
 
         return null; // Replace with your implementation

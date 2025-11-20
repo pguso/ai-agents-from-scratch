@@ -12,7 +12,7 @@
  * Difficulty: ⭐⭐☆☆☆
  */
 
-import { SystemMessage, HumanMessage, AIMessage, Runnable, LlamaCppLLM } from '../../../src/index.js';
+import { SystemMessage, HumanMessage, Runnable, LlamaCppLLM } from '../../../src/index.js';
 import { BaseCallback } from '../../../src/utils/callbacks.js';
 import { readFileSync } from 'fs';
 
