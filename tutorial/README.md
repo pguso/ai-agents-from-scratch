@@ -62,13 +62,22 @@ Transform the patterns you already use into reusable components.
 - [03-llm-wrapper](01-foundation/03-llm-wrapper/lesson.md) - Model abstraction layer
 - [04-context](01-foundation/04-context/lesson.md) - Conversation state management 
 
-### Part 2: Composition [Coming Soon]
-Building chains and memory
-- [01-prompts](02-composition/01-prompts/lesson.md) - Coming soon
-- [02-parsers](02-composition/02-parsers/lesson.md) - Coming soon
-- [03-llm-chain](02-composition/03-llm-chain/lesson.md) - Coming soon
-- [04-piping](02-composition/04-piping/lesson.md) - Coming soon
-- [05-memory](02-composition/05-memory/lesson.md) - Coming soon
+### Part 2: Composition 
+Master prompt engineering and chain complex operations together.
+
+**What you'll solve:**
+- **Copy-pasting prompts everywhere?** → Build reusable PromptTemplates with variables
+- **Need structured LLM outputs?** → Create OutputParsers for reliable data extraction
+- **Repeating prompt + LLM patterns?** → Design LLMChain to compose operations
+- **Want to chain operations together?** → Use piping to connect Runnables
+- **LLM forgets conversation history?** → Implement Memory for context persistence
+
+**Lessons:**
+- [01-prompts](02-composition/01-prompts/lesson.md) - Template-based prompt engineering
+- [02-parsers](02-composition/02-parsers/lesson.md) - Structured output extraction - Coming soon
+- [03-llm-chain](02-composition/03-llm-chain/lesson.md) - Composing prompts with models - Coming soon
+- [04-piping](02-composition/04-piping/lesson.md) - Building data transformation pipelines - Coming soon
+- [05-memory](02-composition/05-memory/lesson.md) - Persistent conversation history - Coming soon
 
 ### Part 3: Agents [Coming Soon]
 Agents and tools

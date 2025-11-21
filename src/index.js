@@ -30,7 +30,7 @@ export {
 
 // Prompts
 export {
-  BasePrompt,
+  BasePromptTemplate,
   PromptTemplate,
   ChatPromptTemplate,
   FewShotPromptTemplate,
