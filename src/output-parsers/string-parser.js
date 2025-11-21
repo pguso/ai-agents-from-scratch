@@ -1,18 +1,42 @@
-/**
- * StringOutputParser
- *
- * Simple string parser (pass-through)
- *
- * @module src/output-parsers/string-parser.js
- */
+import { BaseOutputParser } from './base-parser.js';
 
-export class StringOutputParser {
+/**
+ * Parser that returns cleaned string output
+ * Strips whitespace and optionally removes markdown
+ *
+ * Example:
+ *   const parser = new StringOutputParser();
+ *   const result = await parser.parse("  Hello World  ");
+ *   // "Hello World"
+ */
+export class StringOutputParser extends BaseOutputParser {
   constructor(options = {}) {
-    // TODO: Implement constructor
-    throw new Error('StringOutputParser not yet implemented');
+    super();
+    this.stripMarkdown = options.stripMarkdown ?? true;
   }
 
-  // TODO: Add methods
-}
+  /**
+   * Parse: clean the text
+   */
+  async parse(text) {
+    let cleaned = text.trim();
 
-export default StringOutputParser;
+    if (this.stripMarkdown) {
+      cleaned = this._stripMarkdownCodeBlocks(cleaned);
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Remove markdown code blocks (```code```)
+   */
+  _stripMarkdownCodeBlocks(text) {
+    // Remove ```language\ncode\n```
+    return text.replace(/```[\w]*\n([\s\S]*?)\n```/g, '$1').trim();
+  }
+
+  getFormatInstructions() {
+    return 'Respond with plain text. No markdown formatting.';
+  }
+}

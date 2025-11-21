@@ -63,7 +63,7 @@ Transform the patterns you already use into reusable components.
 - [04-context](01-foundation/04-context/lesson.md) - Conversation state management 
 
 ### Part 2: Composition 
-Master prompt engineering and chain complex operations together.
+Dive deeper into prompt engineering and chain complex operations together.
 
 **What you'll solve:**
 - **Copy-pasting prompts everywhere?** → Build reusable PromptTemplates with variables
@@ -74,7 +74,7 @@ Master prompt engineering and chain complex operations together.
 
 **Lessons:**
 - [01-prompts](02-composition/01-prompts/lesson.md) - Template-based prompt engineering
-- [02-parsers](02-composition/02-parsers/lesson.md) - Structured output extraction - Coming soon
+- [02-parsers](02-composition/02-parsers/lesson.md) - Structured output extraction
 - [03-llm-chain](02-composition/03-llm-chain/lesson.md) - Composing prompts with models - Coming soon
 - [04-piping](02-composition/04-piping/lesson.md) - Building data transformation pipelines - Coming soon
 - [05-memory](02-composition/05-memory/lesson.md) - Persistent conversation history - Coming soon
@@ -96,12 +96,12 @@ State machines and workflows
 - [05-checkpointing](04-graphs/05-checkpointing/lesson.md) - Coming soon
 - [06-agent-graph](04-graphs/06-agent-graph/lesson.md) - Coming soon
 
-## Capstone Projects [Coming Soon]
+## Capstone Projects
 
 Complete these capstone projects to solidify your learning:
 
-- [Smart Email Classifier](projects/01-smart-email-classifier)
-- [Research Agent](projects/research-agent/) - Coming soon
+- [Smart Email Classifier](projects/01-smart-email-classifier) - After Part 1
+- [Research Agent](projects/research-agent/) - Coming soon 
 - [Task Automation](projects/task-automation/) - Coming soon
 - [Approval Workflow](projects/approval-workflow/) - Coming soon
 
