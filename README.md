@@ -159,6 +159,22 @@ Follow these examples in order to build understanding progressively:
 
 ---
 
+### 10. **AoT Agent** - Atom of Thought Planning
+`aot-agent/` | [Code](examples/10_aot-agent/aot-agent.js) | [Code Explanation](examples/10_aot-agent/CODE.md) | [Concepts](examples/10_aot-agent/CONCEPT.md)
+
+**What you'll learn:**
+- Atom of Thought methodology
+- Atomic planning for multi-step computations
+- Dependency management between operations
+- Structured JSON output for reasoning plans
+- Deterministic execution of plans
+
+**Key concepts**: AoT planning, atomic operations, dependency resolution, plan validation, structured reasoning
+
+**This is the foundation for agents that separate planning from execution, enabling precise and auditable multi-step reasoning!**
+
+---
+
 ## Documentation Structure
 
 Each example folder contains:
