@@ -11,6 +11,9 @@ This repository teaches you to build AI agents from first principles using **loc
 - How different agent architectures function
 - Why frameworks make certain design choices
 
+> A Python version of this tutorial is available here:
+> https://github.com/pguso/agents-from-scratch
+
 **Philosophy**: Learn by building. Understand deeply, then use frameworks wisely.
 
 ## Next Phase: Build LangChain & LangGraph Concepts From Scratch
