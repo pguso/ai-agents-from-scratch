@@ -174,8 +174,6 @@ Follow these examples in order to build understanding progressively:
 
 **Key concepts**: AoT planning, atomic operations, dependency resolution, plan validation, structured reasoning
 
-**This is the foundation for agents that separate planning from execution, enabling precise and auditable multi-step reasoning!**
-
 ---
 
 ## Documentation Structure
