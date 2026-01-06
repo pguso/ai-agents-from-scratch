@@ -16,6 +16,25 @@ This repository teaches you to build AI agents from first principles using **loc
 
 **Philosophy**: Learn by building. Understand deeply, then use frameworks wisely.
 
+## Companion Website 
+
+This repository now has a **matching companion website**:
+
+👉 **https://agentsfromscratch.com**
+
+The website is **not a replacement for this repo**, but a **conceptual companion** that:
+
+- Explains *why* each example exists  
+- Visualizes the learning path from raw LLM calls to full agents  
+- Separates **code**, **explanations**, and **core concepts**  
+- Helps you understand agent architectures before using frameworks  
+
+**Recommended workflow:**
+- Use **GitHub** for running, modifying, and studying the code  
+- Use the **website** for mental models, explanations, and progression  
+
+> Think of the site as the *map* and this repo as the *terrain*.
+
 ## Next Phase: Build LangChain & LangGraph Concepts From Scratch
 
 > After mastering the fundamentals, the next stage of this project walks you through **re-implementing the core parts of LangChain and LangGraph** in plain JavaScript using local models.
