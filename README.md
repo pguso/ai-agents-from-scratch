@@ -11,7 +11,29 @@ This repository teaches you to build AI agents from first principles using **loc
 - How different agent architectures function
 - Why frameworks make certain design choices
 
+> A Python version of this tutorial is available here:
+> https://github.com/pguso/agents-from-scratch
+
 **Philosophy**: Learn by building. Understand deeply, then use frameworks wisely.
+
+## Companion Website 
+
+This repository now has a **matching companion website**:
+
+👉 **https://agentsfromscratch.com**
+
+The website is **not a replacement for this repo**, but a **conceptual companion** that:
+
+- Explains *why* each example exists  
+- Visualizes the learning path from raw LLM calls to full agents  
+- Separates **code**, **explanations**, and **core concepts**  
+- Helps you understand agent architectures before using frameworks  
+
+**Recommended workflow:**
+- Use **GitHub** for running, modifying, and studying the code  
+- Use the **website** for mental models, explanations, and progression  
+
+> Think of the site as the *map* and this repo as the *terrain*.
 
 ## Next Phase: Build LangChain & LangGraph Concepts From Scratch
 
@@ -170,8 +192,6 @@ Follow these examples in order to build understanding progressively:
 - Deterministic execution of plans
 
 **Key concepts**: AoT planning, atomic operations, dependency resolution, plan validation, structured reasoning
-
-**This is the foundation for agents that separate planning from execution, enabling precise and auditable multi-step reasoning!**
 
 ---
 
