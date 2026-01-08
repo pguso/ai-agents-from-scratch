@@ -6,3 +6,6 @@ internal
 ui
 *.txt
 node-llama-docs
+
+frontend*
+VIDEO_SCRIPT.md
