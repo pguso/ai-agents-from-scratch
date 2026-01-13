@@ -11,29 +11,21 @@ This repository teaches you to build AI agents from first principles using **loc
 - How different agent architectures function
 - Why frameworks make certain design choices
 
-> A Python version of this tutorial is available here:
-> https://github.com/pguso/agents-from-scratch
-
 **Philosophy**: Learn by building. Understand deeply, then use frameworks wisely.
 
-## Companion Website 
+## Related Projects
 
-This repository now has a **matching companion website**:
+### [AI Product from Scratch](https://github.com/yourusername/ai-product-from-scratch)
 
-👉 **https://agentsfromscratch.com**
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 
-The website is **not a replacement for this repo**, but a **conceptual companion** that:
+Learn AI product development fundamentals with local LLMs. Covers prompt engineering, structured output, multi-step reasoning, API design, and frontend integration through 10 comprehensive lessons with visual diagrams.
 
-- Explains *why* each example exists  
-- Visualizes the learning path from raw LLM calls to full agents  
-- Separates **code**, **explanations**, and **core concepts**  
-- Helps you understand agent architectures before using frameworks  
+### [AI Agents from Scratch in Python](https://github.com/pguso/agents-from-scratch) 
 
-**Recommended workflow:**
-- Use **GitHub** for running, modifying, and studying the code  
-- Use the **website** for mental models, explanations, and progression  
-
-> Think of the site as the *map* and this repo as the *terrain*.
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
 
 ## Next Phase: Build LangChain & LangGraph Concepts From Scratch
 
