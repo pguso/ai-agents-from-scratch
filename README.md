@@ -15,7 +15,7 @@ This repository teaches you to build AI agents from first principles using **loc
 
 ## Related Projects
 
-### [AI Product from Scratch](https://github.com/yourusername/ai-product-from-scratch)
+### [AI Product from Scratch](https://github.com/pguso/ai-product-from-scratch)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
