@@ -1,9 +1,9 @@
 > **Read the full interactive version:**  
-> This repository is part of **AI Agents From Scratch** — a hands-on learning series where we build AI agents *step by step*, explain every design decision, and visualize what’s happening under the hood.  
+> This repository is part of **AI Agents From Scratch** - a hands-on learning series where we build AI agents *step by step*, explain every design decision, and visualize what’s happening under the hood.  
 >  
 > 👉 **https://agentsfromscratch.com**  
 >  
-> If you prefer **long-form explanations, diagrams, and conceptual deep dives**, start there — then come back here to explore the code.
+> If you prefer **long-form explanations, diagrams, and conceptual deep dives**, start there - then come back here to explore the code.
 
 
 # AI Agents From Scratch
