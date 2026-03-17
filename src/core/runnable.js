@@ -1,5 +1,6 @@
 import RunnableConfig from "./context.js";
 import {CallbackManager} from "../utils/index.js";
+import { asAgentError } from "../utils/errors.js";
 
 /**
  * Runnable - Base class for all composable components
@@ -40,9 +41,14 @@ export class Runnable {
 
             return output;
         } catch (error) {
+            const normalized = asAgentError(error, {
+                details: {
+                    runnable: this.name
+                }
+            });
             // Notify callbacks: error
-            await callbackManager.handleError(this, error, runnableConfig);
-            throw error;
+            await callbackManager.handleError(this, normalized, runnableConfig);
+            throw normalized;
         }
     }
 

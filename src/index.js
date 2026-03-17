@@ -54,7 +54,6 @@ export {
   LLMChain,
   SequentialChain,
   RouterChain,
-  MapReduceChain,
   TransformChain
 } from './chains/index.js';
 

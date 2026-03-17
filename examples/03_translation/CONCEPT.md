@@ -16,7 +16,7 @@ Without System Prompt          With System Prompt
 ─────────────────────         ──────────────────────
 "Hi, I'm an AI."              "I'm a professional translator
                                with expertise in scientific
-What do you want?"            German. I follow strict quality
+"What can I do for you?"            German. I follow strict quality
                               guidelines and output format."
 ```
 

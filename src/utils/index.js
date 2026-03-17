@@ -10,4 +10,5 @@ export { RetryManager } from './retry.js';
 export { TimeoutManager } from './timeout.js';
 export { Logger } from './logger.js';
 export { SchemaValidator } from './schema-validator.js';
+export * from './errors.js';
 

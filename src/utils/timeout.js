@@ -6,13 +6,34 @@
  * @module src/utils/timeout.js
  */
 
+import { TimeoutError } from './errors.js';
+
 export class TimeoutManager {
   constructor(options = {}) {
-    // TODO: Implement constructor
-    throw new Error('TimeoutManager not yet implemented');
+    this.defaultTimeoutMs = options.defaultTimeoutMs ?? 30_000;
   }
 
-  // TODO: Add methods
+  async run(promiseOrFn, options = {}) {
+    const timeoutMs = options.timeoutMs ?? this.defaultTimeoutMs;
+    const details = options.details ?? null;
+
+    const promise = typeof promiseOrFn === 'function'
+      ? Promise.resolve().then(() => promiseOrFn())
+      : promiseOrFn;
+
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, { details }));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 export default TimeoutManager;

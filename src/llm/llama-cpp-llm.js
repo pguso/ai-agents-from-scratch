@@ -7,6 +7,7 @@
 import { Runnable } from '../core/runnable.js';
 import { AIMessage, HumanMessage } from '../core/message.js';
 import { getLlama, LlamaChatSession } from 'node-llama-cpp';
+import { LLMGenerationError, LLMInitializationError } from '../utils/errors.js';
 
 /**
  * LlamaCppLLM - A Runnable wrapper for node-llama-cpp
@@ -184,8 +185,13 @@ export class LlamaCppLLM extends Runnable {
         }
       }
     } catch (error) {
-      throw new Error(
-          `Failed to initialize model at ${this.modelPath}: ${error.message}`
+      throw new LLMInitializationError(
+        `Failed to initialize model at ${this.modelPath}: ${error.message}`,
+        {
+          cause: error,
+          retryable: false,
+          details: { modelPath: this.modelPath }
+        }
       );
     }
   }
@@ -386,7 +392,11 @@ export class LlamaCppLLM extends Runnable {
       // Return as AIMessage for consistency
       return new AIMessage(response);
     } catch (error) {
-      throw new Error(`Generation failed: ${error.message}`);
+      throw new LLMGenerationError(`Generation failed: ${error.message}`, {
+        cause: error,
+        retryable: true,
+        details: { modelPath: this.modelPath }
+      });
     }
   }
 
@@ -567,7 +577,11 @@ export class LlamaCppLLM extends Runnable {
       delete this._currentStreamChunks;
 
     } catch (error) {
-      throw new Error(`Streaming failed: ${error.message}`);
+      throw new LLMGenerationError(`Streaming failed: ${error.message}`, {
+        cause: error,
+        retryable: true,
+        details: { modelPath: this.modelPath, streaming: true }
+      });
     }
   }
 
