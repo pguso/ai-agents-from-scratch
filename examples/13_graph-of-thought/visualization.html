@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Graph of Thought — Motivation Analysis</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #e2e8f0; }
+  header { padding: 22px 32px 14px; border-bottom: 1px solid #1e2535; }
+  header h1 { font-size: 1.25rem; color: #f8fafc; }
+  header p { margin-top: 4px; font-size: .84rem; color: #94a3b8; }
+
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    padding: 10px 32px; background: #141820; border-bottom: 1px solid #1e2535;
+  }
+  .legend { display: flex; gap: 14px; font-size: .75rem; color: #94a3b8; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 6px; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid; }
+
+  #canvas-wrap { padding: 24px 32px 18px; overflow: auto; }
+  #canvas { position: relative; min-height: 980px; min-width: 1620px; }
+  #links { position: absolute; inset: 0; pointer-events: none; }
+  .edge { transition: stroke .12s, stroke-width .12s, opacity .12s; }
+  .edge.dim { opacity: 0.12 !important; }
+  .edge.active {
+    stroke: #f6e05e !important;
+    stroke-width: 2.6 !important;
+    opacity: 1 !important;
+  }
+  .stage { position: absolute; top: 0; font-size: .68rem; color: #64748b; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+
+  .node {
+    position: absolute; width: 240px; border-radius: 10px; border: 1.5px solid #2d3748;
+    background: #161c27; padding: 10px 11px; transition: transform .12s;
+  }
+  .node:hover { transform: translateY(-1px); }
+  .node.root { background: #172033; border-color: #3b82f6; }
+  .node.hypothesis { background: #1a202c; border-color: #475569; }
+  .node.contrast { background: #1f170a; border-color: #b7791f; }
+  .node.refined { background: #132025; border-color: #0ea5a6; }
+  .node.synthesis { background: #15231a; border-color: #2f7a50; }
+  .node.conclusion { background: #1e1600; border-color: #d4a017; border-width: 2px; }
+  .meta { font-size: .66rem; color: #93a0b3; margin-bottom: 6px; }
+  .text { font-size: .77rem; line-height: 1.45; color: #e2e8f0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .score { display: inline-block; margin-top: 7px; font-size: .65rem; color: #a0aec0; border: 1px solid #334155; border-radius: 999px; padding: 2px 7px; }
+
+  #result {
+    margin: 0 32px 28px; border: 1px solid #1e2535; border-radius: 10px; background: #141820; padding: 16px 18px;
+  }
+  #result h2 { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #64748b; margin-bottom: 10px; }
+  .label { margin-top: 9px; margin-bottom: 4px; color: #8aa0bb; font-size: .74rem; }
+  .body { font-size: .84rem; line-height: 1.62; color: #dbe7f5; }
+  ul { margin-left: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Graph of Thought — Motivation Analysis</h1>
+  <p>Branch, score, contrast, refine, aggregate, and conclude with multi-parent graph nodes.</p>
+</header>
+
+<div class="topbar">
+  <div class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:#172033;border-color:#3b82f6"></span>Root</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#1a202c;border-color:#475569"></span>Hypothesis</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#1f170a;border-color:#b7791f"></span>Contrast</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#132025;border-color:#0ea5a6"></span>Refined</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#15231a;border-color:#2f7a50"></span>Synthesis</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#1e1600;border-color:#d4a017"></span>Conclusion</span>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <div id="canvas">
+    <svg id="links"></svg>
+  </div>
+</div>
+
+<section id="result">
+  <h2>Final Conclusion</h2>
+  <div class="label">Core motivation</div>
+  <div class="body" id="core"></div>
+  <div class="label">Psychological picture</div>
+  <div class="body" id="picture"></div>
+  <div class="label">Contradictions as signal</div>
+  <div class="body" id="contradictions"></div>
+  <div class="label">Recommendation</div>
+  <div class="body" id="recommendation"></div>
+  <div class="label">What ToT would miss</div>
+  <ul class="body" id="missed"></ul>
+</section>
+
+<script>
+const D = {"nodes":[{"id":"n1","type":"root","content":"A 34-year-old woman resigns from a secure office job, withdraws from friends, and starts taking long solo walks daily without explaining why.","score":0,"parentIds":[]},{"id":"n2","type":"hypothesis","content":"The woman's resignation from a secure job and withdrawal from social interactions may indicate an avoidance motivation to escape negative emotions or experiences. Her long solo walks could be a way to avoid confronting or dealing with these emotions. The lack of explanation for her actions suggests a possible desire to avoid scrutiny or judgment.","score":7.4,"parentIds":["n1"]},{"id":"n3","type":"hypothesis","content":"The woman's resignation, withdrawal from friends, and long solo walks may indicate emotional exhaustion and burnout. These behaviors are common in individuals experiencing chronic stress and emotional depletion.","score":8.8,"parentIds":["n1"]},{"id":"n4","type":"hypothesis","content":"The woman's resignation from her secure job and withdrawal from social interactions may indicate a shift towards personal growth and self-improvement, possibly seeking to explore new experiences or address underlying issues. Her solo walks could be a form of self-reflection or physical exercise that supports this growth motivation.","score":8.1,"parentIds":["n1"]},{"id":"n5","type":"hypothesis","content":"The woman's resignation from her secure job, withdrawal from friends, and increased solo walking could be influenced by external social pressure, such as family expectations, societal norms, or peer pressure. These behaviors may indicate a shift in her social identity or a response to external validation.","score":6.7,"parentIds":["n1"]},{"id":"n6","type":"contrast","content":"The two hypotheses present conflicting explanations for the same behavior: one attributes the woman's actions to emotional exhaustion and burnout due to chronic stress, while the other suggests they are signs of personal growth and self-improvement. This contradiction highlights the complexity of interpreting individual behavior through psychological lenses.","score":0,"parentIds":["n3","n4"]},{"id":"n7","type":"contrast","content":"Hypothesis A attributes the woman's behavior to internal emotional exhaustion and burnout, while Hypothesis B attributes it to external social pressure and identity shifts. This contradiction highlights the tension between internal psychological states and external social influences on behavior.","score":0,"parentIds":["n3","n5"]},{"id":"n8","type":"refined","content":"The woman's resignation, withdrawal from friends, and long solo walks may reflect emotional exhaustion and burnout, which are often linked to chronic stress and emotional depletion. These behaviors could be influenced by external social pressures, such as family expectations or societal norms, but they also highlight a shift in her social identity and a response to internal emotional needs.","score":0,"parentIds":["n5","n3"]},{"id":"n9","type":"refined","content":"The woman's resignation from a secure job and withdrawal from social interactions may indicate an avoidance motivation to escape negative emotions or experiences. Her long solo walks could be a way to avoid confronting or dealing with these emotions. The lack of explanation for her actions suggests a possible desire to avoid scrutiny or judgment. However, the stronger context provides additional insight, suggesting that these behaviors may be linked to emotional exhaustion and burnout, and that the absence of a clear explanation could reflect a need for self-reflection and personal growth rather than avoidance.","score":0,"parentIds":["n2","n6"]},{"id":"n10","type":"synthesis","content":"The woman's behaviors of resignation, withdrawal, and solo walks reflect a complex interplay between emotional exhaustion and burnout, as well as potential signs of personal growth and self-improvement. While emotional exhaustion suggests chronic stress and depletion, the other perspective highlights a proactive shift toward self-reflection and exploration, indicating that her actions may serve dual purposes: both as indicators of distress and as markers of intentional change.","score":0,"parentIds":["n3","n4","n6"]},{"id":"n11","type":"synthesis","content":"The woman's behaviors of resignation, withdrawal, and solo walks likely reflect a complex interplay between internal emotional exhaustion and external social pressures. While her actions may initially appear as avoidance, they could also signal a shift in her social identity and a response to chronic stress, suggesting a need for self-reflection and personal growth. This synthesis integrates both internal and external factors, highlighting the interdependence of psychological states and social influences.","score":0,"parentIds":["n8","n9","n7"]},{"id":"n12","type":"conclusion","content":"The woman's behavior reflects a complex interplay between emotional exhaustion, burnout, and potential personal growth, with contradictions in interpretation highlighting the need for a nuanced understanding of her psychological state.","score":0,"parentIds":["n10","n11","n6","n7","n8"]}],"conclusion":{"id":"n12","core_motivation":"The woman's behavior reflects a complex interplay between emotional exhaustion, burnout, and potential personal growth, with contradictions in interpretation highlighting the need for a nuanced understanding of her psychological state.","psychological_picture":"The woman exhibits signs of emotional exhaustion and burnout through resignation, withdrawal, and solitary walks, but these behaviors also suggest a possible shift toward self-reflection and exploration. The contradictions between attributing her actions to distress or personal growth underscore the multifaceted nature of her psychological state, influenced by both internal and external factors. Her actions may be a response to chronic stress, social pressures, or a deliberate attempt at self-improvement, each interpretation offering a different lens into her motivations and the underlying psychological dynamics at play.","contradictions_as_signal":"Contradictions in interpretation serve as a diagnostic signal for the complexity of psychological states, indicating that a single behavior may be influenced by multiple factors and that a comprehensive assessment requires considering both internal and external influences. The presence of contradictions suggests that the individual's motivations are not singular, and that a thorough analysis must account for the interplay between different psychological processes and social contexts.","recommendation":"A comprehensive psychological assessment is recommended to explore both the potential for emotional exhaustion and burnout, as well as the possibility of personal growth and self-reflection. This should include a detailed evaluation of the individual's social environment, stressors, and potential for change, while also considering the role of external pressures in shaping her behavior.","what_tot_missed":["Insight 1: The role of social support systems in the woman's behavior and their potential impact on her emotional state","Insight 2: The possibility of a transition from burnout to self-improvement and the factors that might facilitate this transition","Insight 3: The influence of cultural or societal norms on her decision to withdraw and engage in solo walks"]}};
+const canvas = document.getElementById("canvas");
+const svg = document.getElementById("links");
+
+const typeToCol = {
+  root: 0,
+  hypothesis: 1,
+  contrast: 2,
+  refined: 3,
+  synthesis: 4,
+  conclusion: 5
+};
+const colTitle = {
+  0: "Root",
+  1: "Phase 1-2: Branch / Score",
+  2: "Phase 3: Contrast",
+  3: "Phase 4: Refine",
+  4: "Phase 5: Synthesis",
+  5: "Phase 6: Conclusion"
+};
+
+const COL_X = [30, 320, 610, 900, 1190, 1480];
+const NODE_W = 240;
+const NODE_H = 92;
+const ROW_GAP = 156;
+
+const cols = {};
+for (const n of D.nodes) {
+  const c = typeToCol[n.type] ?? 1;
+  if (!cols[c]) cols[c] = [];
+  cols[c].push(n);
+}
+
+const pos = {};
+for (const [col, arr] of Object.entries(cols)) {
+  arr.forEach((n, idx) => {
+    pos[n.id] = { x: COL_X[col], y: 36 + idx * ROW_GAP };
+  });
+}
+
+const maxY = Math.max(...Object.values(pos).map(p => p.y));
+canvas.style.height = (maxY + NODE_H + 34) + "px";
+svg.setAttribute("width", canvas.clientWidth);
+svg.setAttribute("height", canvas.clientHeight);
+
+for (const [col, title] of Object.entries(colTitle)) {
+  const t = document.createElement("div");
+  t.className = "stage";
+  t.style.left = COL_X[col] + "px";
+  t.textContent = title;
+  canvas.appendChild(t);
+}
+
+for (const n of D.nodes) {
+  const card = document.createElement("div");
+  card.className = "node " + n.type;
+  card.dataset.nodeId = n.id;
+  card.style.left = pos[n.id].x + "px";
+  card.style.top = pos[n.id].y + "px";
+  const parents = n.parentIds.length ? n.parentIds.join(", ") : "root";
+  card.innerHTML =
+    "<div class='meta'>[" + n.id + "] " + n.type + " | parents: " + parents + "</div>" +
+    "<div class='text'>" + n.content + "</div>" +
+    (n.score > 0 ? "<div class='score'>Score: " + n.score + "</div>" : "");
+  canvas.appendChild(card);
+}
+
+function draw(parentId, childId) {
+  const p = pos[parentId];
+  const c = pos[childId];
+  if (!p || !c) return;
+  const x1 = p.x + NODE_W;
+  const y1 = p.y + NODE_H / 2;
+  const x2 = c.x;
+  const y2 = c.y + NODE_H / 2;
+  const cx = (x1 + x2) / 2;
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M" + x1 + "," + y1 + " C" + cx + "," + y1 + " " + cx + "," + y2 + " " + x2 + "," + y2);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#334155");
+  path.setAttribute("stroke-width", "1.4");
+  path.setAttribute("opacity", "0.75");
+  path.setAttribute("class", "edge");
+  path.dataset.parentId = parentId;
+  path.dataset.childId = childId;
+  svg.appendChild(path);
+}
+
+for (const n of D.nodes) {
+  for (const pId of n.parentIds) {
+    draw(pId, n.id);
+  }
+}
+
+const edgeEls = [...document.querySelectorAll(".edge")];
+const nodeEls = [...document.querySelectorAll(".node")];
+
+function clearEdgeHighlight() {
+  edgeEls.forEach((e) => {
+    e.classList.remove("active", "dim");
+  });
+}
+
+function highlightEdgesForNode(nodeId) {
+  edgeEls.forEach((e) => {
+    const isConnected = e.dataset.parentId === nodeId || e.dataset.childId === nodeId;
+    if (isConnected) {
+      e.classList.add("active");
+      e.classList.remove("dim");
+    } else {
+      e.classList.remove("active");
+      e.classList.add("dim");
+    }
+  });
+}
+
+nodeEls.forEach((nodeEl) => {
+  nodeEl.addEventListener("mouseenter", () => {
+    highlightEdgesForNode(nodeEl.dataset.nodeId);
+  });
+  nodeEl.addEventListener("mouseleave", () => {
+    clearEdgeHighlight();
+  });
+});
+
+document.getElementById("core").textContent = D.conclusion.core_motivation || "";
+document.getElementById("picture").textContent = D.conclusion.psychological_picture || "";
+document.getElementById("contradictions").textContent = D.conclusion.contradictions_as_signal || "";
+document.getElementById("recommendation").textContent = D.conclusion.recommendation || "";
+const missed = document.getElementById("missed");
+for (const item of (D.conclusion.what_tot_missed || [])) {
+  const li = document.createElement("li");
+  li.textContent = item;
+  missed.appendChild(li);
+}
+</script>
+</body>
+</html>

@@ -206,6 +206,36 @@ Follow these examples in order to build understanding progressively:
 
 ---
 
+### 12. **Tree of Thought** - Search over reasoning branches
+`tree-of-thought/` | [Code](examples/12_tree-of-thought/tree-of-thought.js) | [Code Explanation](examples/12_tree-of-thought/CODE.md) | [Concepts](examples/12_tree-of-thought/CONCEPT.md)
+
+**What you'll learn:**
+- Generating multiple candidate next actions from the same partial plan
+- Ranking and pruning branches with a deterministic score in code
+- Running a compact beam search loop with inspectable kept/pruned decisions
+- Verifying the winning path with explicit sanity checks
+
+**Key concepts**: Tree of Thought, beam search, branch pruning, verifiable objectives, search controllers
+
+---
+
+### 13. **Graph of Thought** - DAG merge for multi-source outputs
+`graph-of-thought/` | [Code](examples/13_graph-of-thought/graph-of-thought.js) | [Code Explanation](examples/13_graph-of-thought/CODE.md) | [Concepts](examples/13_graph-of-thought/CONCEPT.md)
+
+**What you'll learn:**
+- Modeling reasoning as a DAG: parallel source extracts → merge rules → final draft
+- Resolving conflicts explicitly before generation (`must_include`, `must_avoid`, `conflict_notes`)
+- Adding deterministic merge and draft compliance checks
+- Running independent nodes in parallel to reduce latency
+
+**Key concepts**: Graph of Thought, DAG orchestration, multi-source fusion, merge-before-generate, policy reconciliation
+
+**Decision guide**: use ToT when you need to search competing paths; use GoT when you need to combine multiple sources into one consistent policy. Compare both in:
+- [ToT concept](examples/12_tree-of-thought/CONCEPT.md)
+- [GoT concept](examples/13_graph-of-thought/CONCEPT.md)
+
+---
+
 ## Documentation Structure
 
 Each example folder contains:
@@ -334,6 +364,14 @@ ai-agents/
 │   └── CONCEPT.md
 ├── 11_error-handling/
 │   ├── error-handling.js
+│   ├── CODE.md
+│   └── CONCEPT.md
+├── 12_tree-of-thought/
+│   ├── tree-of-thought.js
+│   ├── CODE.md
+│   └── CONCEPT.md
+├── 13_graph-of-thought/
+│   ├── graph-of-thought.js
 │   ├── CODE.md
 │   └── CONCEPT.md
 ├── helper/
