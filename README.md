@@ -236,6 +236,19 @@ Follow these examples in order to build understanding progressively:
 
 ---
 
+### 14. **Chain of Thought** - Auditable stepwise decisioning
+`chain-of-thought/` | [Code](examples/14_chain-of-thought/chain-of-thought.js) | [Code Explanation](examples/14_chain-of-thought/CODE.md) | [Concepts](examples/14_chain-of-thought/CONCEPT.md)
+
+**What you'll learn:**
+- Splitting a high-stakes decision into explicit reasoning phases
+- Preventing early bias with a facts-only extraction step
+- Balancing fraud signals with legitimacy evidence before policy application
+- Producing an auditable final decision with customer-safe and internal outputs
+
+**Key concepts**: Chain of Thought, structured reasoning traces, policy-constrained decisions, explainability, review-ready workflows
+
+---
+
 ## Documentation Structure
 
 Each example folder contains:
@@ -372,6 +385,10 @@ ai-agents/
 │   └── CONCEPT.md
 ├── 13_graph-of-thought/
 │   ├── graph-of-thought.js
+│   ├── CODE.md
+│   └── CONCEPT.md
+├── 14_chain-of-thought/
+│   ├── chain-of-thought.js
 │   ├── CODE.md
 │   └── CONCEPT.md
 ├── helper/

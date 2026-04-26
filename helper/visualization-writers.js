@@ -470,3 +470,338 @@ for (const item of (D.conclusion.what_tot_missed || [])) {
     console.log(`\nVisualization written -> ${outPath}`);
     console.log("Open with: open examples/13_graph-of-thought/visualization.html\n");
 }
+
+export function writeCoTReturnVisualization(
+    outputDir,
+    { returnCase, policy, facts, redFlags, legitimacy, policyResult, decision }
+) {
+    const data = JSON.stringify({
+        returnCase,
+        policy,
+        facts,
+        redFlags,
+        legitimacy,
+        policyResult,
+        decision
+    });
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chain of Thought - Return Decision</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --border: #e4e7eb;
+    --border-strong: #d4d8df;
+    --text: #111827;
+    --text-muted: #4b5563;
+    --text-subtle: #6b7280;
+    --accent: #1f2937;
+    --blue: #2563eb;
+    --orange: #c2410c;
+    --teal: #0f766e;
+    --amber: #b45309;
+    --indigo: #4338ca;
+    --green: #16a34a;
+    --red: #b91c1c;
+    --gray: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .page { max-width: 1440px; margin: 0 auto; padding: 32px 32px 40px; }
+
+  header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .title-row { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  h1 { font-size: 1.25rem; font-weight: 600; color: var(--text); letter-spacing: -0.005em; }
+  .subtitle { margin-top: 4px; color: var(--text-muted); font-size: 0.875rem; }
+  .case-badge {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+    border-radius: 4px; padding: 4px 10px; font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+
+  .scoreboard {
+    display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr));
+    gap: 0; margin-bottom: 24px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); overflow: hidden;
+  }
+  .metric { padding: 14px 16px; border-right: 1px solid var(--border); }
+  .metric:last-child { border-right: none; }
+  .metric .k {
+    color: var(--text-subtle); font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;
+  }
+  .metric .v {
+    margin-top: 6px; font-size: 1.125rem; font-weight: 600; color: var(--text);
+  }
+  .metric.decision .v { text-transform: capitalize; }
+  .metric.policy .v { text-transform: capitalize; }
+
+  .section-title {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text-subtle); font-weight: 600; margin-bottom: 10px;
+  }
+
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0;
+    display: flex; flex-direction: column;
+  }
+  .phase-head {
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .phase-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 4px;
+    background: #f3f4f6; color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: 0.75rem; font-weight: 600;
+    border: 1px solid var(--border);
+  }
+  .phase.facts .phase-num { color: var(--blue); border-color: #c7d7fa; background: #eff4ff; }
+  .phase.red .phase-num { color: var(--orange); border-color: #f7d2bc; background: #fef1e7; }
+  .phase.legit .phase-num { color: var(--teal); border-color: #b8dfd8; background: #ecf6f4; }
+  .phase.policy .phase-num { color: var(--amber); border-color: #f0d8aa; background: #fdf3df; }
+  .phase.decision .phase-num { color: var(--indigo); border-color: #cfd0f5; background: #eef0fe; }
+  .phase h3 { font-size: 0.875rem; font-weight: 600; color: var(--text); }
+  .phase .tag {
+    margin-left: auto; font-size: 0.7rem; color: var(--text-subtle);
+  }
+
+  .phase-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 10px; }
+
+  .list { display: flex; flex-direction: column; }
+  .item {
+    font-size: 0.78rem; line-height: 1.5; color: var(--text);
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .item:last-child { border-bottom: none; }
+  .item b { font-weight: 600; color: var(--text); }
+  .item .label-text { color: var(--text-muted); font-weight: 500; }
+
+  .status {
+    display: inline-flex; align-items: center;
+    font-size: 0.68rem; font-weight: 600;
+    padding: 1px 7px; border-radius: 3px;
+    border: 1px solid; line-height: 1.5;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .status.pass { color: var(--green); border-color: #b7e0c1; background: #e9f7ec; }
+  .status.fail { color: var(--red); border-color: #f1bdbd; background: #fbe9e9; }
+  .status.review { color: var(--amber); border-color: #f0d8aa; background: #fdf3df; }
+  .status.neutral { color: var(--text-subtle); border-color: var(--border); background: #f6f7f9; }
+
+  .strength {
+    display: inline-flex; align-items: center;
+    font-size: 0.65rem; font-weight: 600;
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid; line-height: 1.5;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .strength.high { color: #166534; border-color: #c1e3c8; background: #edf6ee; }
+  .strength.medium { color: var(--amber); border-color: #f0d8aa; background: #fdf3df; }
+  .strength.low { color: var(--text-subtle); border-color: var(--border); background: #f6f7f9; }
+
+  .meter { margin-top: auto; padding-top: 10px; }
+  .meter .label {
+    font-size: 0.7rem; color: var(--text-muted); margin-bottom: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .meter .label span:last-child { font-weight: 600; color: var(--text); }
+  .bar {
+    width: 100%; height: 6px; border-radius: 3px;
+    background: #eef0f3; overflow: hidden;
+  }
+  .fill { height: 100%; border-radius: 3px; }
+  .fill.fraud { background: var(--orange); }
+  .fill.legit { background: var(--teal); }
+
+  .decision-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 18px 20px;
+  }
+  .decision-panel h2 {
+    font-size: 0.7rem; letter-spacing: 0.07em;
+    text-transform: uppercase; font-weight: 600;
+    color: var(--text-subtle); margin-bottom: 10px;
+  }
+  .reasoning {
+    font-size: 0.875rem; line-height: 1.65; color: var(--text);
+  }
+
+  @media (max-width: 1100px) {
+    .scoreboard { grid-template-columns: repeat(2, 1fr); }
+    .metric { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .metric:nth-child(2n) { border-right: none; }
+    .timeline { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="title-row">
+        <div>
+          <h1>Chain of Thought - Return Decision</h1>
+          <div class="subtitle">Structured reasoning across five explicit phases before final action.</div>
+        </div>
+        <div class="case-badge">Case ${returnCase.request_id || "n/a"}</div>
+      </div>
+    </header>
+
+    <section class="scoreboard">
+      <article class="metric decision"><div class="k">Final Decision</div><div class="v" id="mDecision"></div></article>
+      <article class="metric"><div class="k">Confidence</div><div class="v" id="mConfidence"></div></article>
+      <article class="metric"><div class="k">Fraud Score</div><div class="v" id="mFraud"></div></article>
+      <article class="metric"><div class="k">Legitimacy Score</div><div class="v" id="mLegit"></div></article>
+      <article class="metric policy"><div class="k">Policy Outcome</div><div class="v" id="mPolicy"></div></article>
+    </section>
+
+    <div class="section-title">Reasoning Phases</div>
+    <section class="timeline" id="timeline"></section>
+
+    <section class="decision-panel">
+      <h2>Decision Reasoning</h2>
+      <div class="reasoning" id="reasoning"></div>
+    </section>
+  </main>
+
+<script>
+const D = ${data};
+const timeline = document.getElementById("timeline");
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function statusBadge(raw) {
+  const x = String(raw || "").toLowerCase();
+  if (x === "present" || x === "pass") return '<span class="status pass">' + escapeHtml(raw) + '</span>';
+  if (x === "not_present" || x === "fail") return '<span class="status fail">' + escapeHtml(raw) + '</span>';
+  if (x === "manual_review_trigger" || x === "manual_review") return '<span class="status review">' + escapeHtml(raw) + '</span>';
+  return '<span class="status neutral">' + escapeHtml(raw || "unclear") + '</span>';
+}
+
+function strengthBadge(raw) {
+  const x = String(raw || "").toLowerCase();
+  const cls = (x === "high" || x === "medium" || x === "low") ? x : "low";
+  return '<span class="strength ' + cls + '">' + escapeHtml(raw) + '</span>';
+}
+
+function makePhase({ cls, num, title, tag, lines, meter }) {
+  const el = document.createElement("article");
+  el.className = "phase " + cls;
+
+  const head = document.createElement("div");
+  head.className = "phase-head";
+  head.innerHTML =
+    '<span class="phase-num">' + num + '</span>' +
+    '<h3>' + escapeHtml(title) + '</h3>' +
+    '<span class="tag">' + escapeHtml(tag) + '</span>';
+  el.appendChild(head);
+
+  const body = document.createElement("div");
+  body.className = "phase-body";
+
+  const list = document.createElement("div");
+  list.className = "list";
+  lines.forEach((html) => {
+    const item = document.createElement("div");
+    item.className = "item";
+    item.innerHTML = html;
+    list.appendChild(item);
+  });
+  body.appendChild(list);
+
+  if (meter) {
+    const m = document.createElement("div");
+    m.className = "meter";
+    const pct = Math.max(0, Math.min(100, meter.value * 10));
+    m.innerHTML =
+      '<div class="label"><span>' + escapeHtml(meter.label) + '</span><span>' + meter.value.toFixed(1) + '/10</span></div>' +
+      '<div class="bar"><div class="fill ' + meter.kind + '" style="width:' + pct + '%"></div></div>';
+    body.appendChild(m);
+  }
+
+  el.appendChild(body);
+  return el;
+}
+
+const facts = (D.facts.extracted_facts || []).slice(0, 5).map((f) => {
+  return '<span>' + escapeHtml(f) + '</span>';
+});
+const red = (D.redFlags.checkpoints || []).slice(0, 5).map((c) => {
+  return '<span class="label-text">' + escapeHtml(c.check) + '</span>' + statusBadge(c.status);
+});
+const legit = (D.legitimacy.customer_supporting_points || []).slice(0, 5).map((p) => {
+  return '<span>' + escapeHtml(p.point) + '</span>' + strengthBadge(p.strength);
+});
+const rules = (D.policyResult.policy_checks || []).slice(0, 5).map((r) => {
+  return '<span class="label-text">' + escapeHtml(r.rule) + '</span>' + statusBadge(r.status);
+});
+const decisionLines = [
+  '<span class="label-text">Customer</span><span>' + escapeHtml(D.decision.customer_message || "n/a") + '</span>',
+  '<span class="label-text">Internal</span><span>' + escapeHtml(D.decision.internal_note || "n/a") + '</span>'
+];
+
+timeline.appendChild(makePhase({
+  cls: "facts", num: "1", title: "Facts", tag: "No judgment",
+  lines: facts.length ? facts : ['<span>No extracted facts</span>']
+}));
+timeline.appendChild(makePhase({
+  cls: "red", num: "2", title: "Red Flags", tag: "Fraud screening",
+  lines: red.length ? red : ['<span>No red flag checks</span>'],
+  meter: { label: "Fraud score", value: Number(D.redFlags.fraud_score || 0), kind: "fraud" }
+}));
+timeline.appendChild(makePhase({
+  cls: "legit", num: "3", title: "Legitimacy", tag: "Customer view",
+  lines: legit.length ? legit : ['<span>No legitimacy points</span>'],
+  meter: { label: "Legitimacy score", value: Number(D.legitimacy.legitimacy_score || 0), kind: "legit" }
+}));
+timeline.appendChild(makePhase({
+  cls: "policy", num: "4", title: "Policy Check", tag: "Rule-constrained",
+  lines: rules.length ? rules : ['<span>No policy checks</span>']
+}));
+timeline.appendChild(makePhase({
+  cls: "decision", num: "5", title: "Decision", tag: "Final output",
+  lines: decisionLines
+}));
+
+document.getElementById("mDecision").textContent = D.decision.final_decision || "n/a";
+document.getElementById("mConfidence").textContent = Number(D.decision.confidence || 0).toFixed(2);
+document.getElementById("mFraud").textContent = Number(D.redFlags.fraud_score || 0).toFixed(1) + "/10";
+document.getElementById("mLegit").textContent = Number(D.legitimacy.legitimacy_score || 0).toFixed(1) + "/10";
+document.getElementById("mPolicy").textContent = D.policyResult.policy_outcome || "n/a";
+document.getElementById("reasoning").textContent = D.decision.decision_reasoning || "";
+</script>
+</body>
+</html>`;
+
+    const outPath = path.join(outputDir, "visualization.html");
+    fs.writeFileSync(outPath, html, "utf8");
+    console.log(`\nVisualization written -> ${outPath}`);
+    console.log("Open with: open examples/14_chain-of-thought/visualization.html\n");
+}
