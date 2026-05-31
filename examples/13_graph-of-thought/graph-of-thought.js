@@ -1,5 +1,5 @@
 /**
- * Example 13: Graph of Thought (GoT) — Motivation analysis
+ * Example 13: Graph of Thought (GoT) - Motivation analysis
  *
  * Run:
  *   node examples/13_graph-of-thought/graph-of-thought.js

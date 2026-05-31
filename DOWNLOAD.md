@@ -21,4 +21,12 @@ npx --no node-llama-cpp pull --dir ./models hf:unsloth/DeepSeek-R1-0528-Qwen3-8B
 npx --no node-llama-cpp pull --dir ./models hf:giladgd/Apertus-8B-Instruct-2509-GGUF:Q6_K
 ```
 
+Example **15 (tool routing)** also needs a small **embedding-only** GGUF (~37MB for Q8_0). Use `--filename` so the path matches the code:
+
+```
+npx --no node-llama-cpp pull --dir ./models hf:CompendiumLabs/bge-small-en-v1.5-gguf:bge-small-en-v1.5-q8_0.gguf --filename bge-small-en-v1.5-q8_0.gguf
+```
+
+Loading the chat model and this embedding model at once uses more RAM than a single-model example; 8GB+ system RAM is still usually enough for Qwen3-1.7B plus bge-small.
+
 

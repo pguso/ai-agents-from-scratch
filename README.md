@@ -249,6 +249,19 @@ Follow these examples in order to build understanding progressively:
 
 ---
 
+### 15. **Tool routing (embeddings)** - Narrow the tool catalog per request
+`tool-routing-embeddings/` | [Code](examples/15_tool-routing-embeddings/tool-routing-embeddings.js) | [Code Explanation](examples/15_tool-routing-embeddings/CODE.md) | [Concepts](examples/15_tool-routing-embeddings/CONCEPT.md)
+
+**What you'll learn:**
+- Precomputing embeddings for short **exemplar** phrases per tool
+- Scoring the user message against exemplars (cosine similarity) with a small embedding model
+- Passing only **top-k** tools (plus optional **always-include** tools) into `session.prompt`
+- Observing **recall** failure when k is too small for multi-intent prompts
+
+**Key concepts**: Tool routing, embedding similarity, exemplar design, context/token savings, pinned tools, retrieval-style agent design
+
+---
+
 ## Documentation Structure
 
 Each example folder contains:
@@ -389,6 +402,10 @@ ai-agents/
 │   └── CONCEPT.md
 ├── 14_chain-of-thought/
 │   ├── chain-of-thought.js
+│   ├── CODE.md
+│   └── CONCEPT.md
+├── 15_tool-routing-embeddings/
+│   ├── tool-routing-embeddings.js
 │   ├── CODE.md
 │   └── CONCEPT.md
 ├── helper/

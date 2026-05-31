@@ -402,7 +402,7 @@ async function promptLLM(prompt, { timeoutMs, retries, correlationId }) {
 }
 
 /**
- * Degraded path: no LLM — resolve a user id and fetch a profile with the same retry → fallback model
+ * Degraded path: no LLM - resolve a user id and fetch a profile with the same retry → fallback model
  * as a healthy agent would, but orchestrated deterministically (error handler delegates here instead
  * of inlining agent work).
  */
@@ -552,9 +552,9 @@ async function runAgent(userInput) {
 const inputs = [
   "Fetch user u_123 and summarize their profile in 2 bullet points.",
   "Fetch user u_999 and tell me when they last logged in.",
-  // Demo: AgentWorkflowError — intentional orchestration / policy failure after validation
+  // Demo: AgentWorkflowError - intentional orchestration / policy failure after validation
   "Please fetch profile for u_demo_workflow.",
-  // Demo: AgentWorkflowError — degraded path: primary(u_777) fails retry ably, fallback(u_777) fails → workflow error
+  // Demo: AgentWorkflowError - degraded path: primary(u_777) fails retry ably, fallback(u_777) fails → workflow error
   "SKIP_LLM_DEGRADED u_777",
   "",
 ];

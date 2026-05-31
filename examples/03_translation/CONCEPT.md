@@ -2,7 +2,7 @@
 
 ## Overview
 
-This example demonstrates how to transform a general-purpose LLM into a **specialized agent** using **system prompts**. The key insight: you don't need different models for different tasks—you need different instructions.
+This example demonstrates how to transform a general-purpose LLM into a **specialized agent** using **system prompts**. The key insight: you don't need different models for different tasks-you need different instructions.
 
 ## What is a System Prompt?
 

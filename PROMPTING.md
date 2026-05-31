@@ -1,6 +1,6 @@
 # Prompt Engineering
 
-Prompt engineering offers the quickest and most straightforward method for shaping how an agent behaves—defining 
+Prompt engineering offers the quickest and most straightforward method for shaping how an agent behaves-defining 
 its personality, function, and choices (such as when it should utilize tools). Agents operate using two prompt categories: 
 system-level and user-level prompts.
 
@@ -68,7 +68,7 @@ Vague vs Specific Examples:
 ❌ Vague: "Analyze this data"
 ✅ Specific: "Find the top 3 trends and explain what caused each one"
 
-Why it matters: The LLM has thousands of ways to interpret vague instructions. It will guess what you want—and often 
+Why it matters: The LLM has thousands of ways to interpret vague instructions. It will guess what you want-and often 
 guess wrong. Clear instructions eliminate guesswork and give you control over the output.
 
 Rule of thumb: If a human assistant would need to ask clarifying questions, your prompt is too vague.
@@ -84,7 +84,7 @@ Benefits
 - Integration: Works well with APIs and schemas.
 
 Best Practices
-- Keep it simple and shallow — avoid deep nesting.
+- Keep it simple and shallow - avoid deep nesting.
 - Use descriptive keys ("task", "context", "constraints").
 - Tell the model the exact output format (e.g., “Respond with valid JSON only”).
 - Optionally define a JSON Schema to enforce structure.
@@ -136,7 +136,7 @@ Feedback: "The view from the balcony was amazing!"
 Category:
 ```
 
-The model learns from the examples and continues in the same style — here, it would answer:
+The model learns from the examples and continues in the same style - here, it would answer:
 "Good morning"
 
 Few-shot prompts are useful when you want consistent tone, format, or logic without retraining the model.

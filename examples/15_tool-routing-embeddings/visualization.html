@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Tool Routing - Embedding Similarity</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #e2e8f0; font-size: 14px; }
+  header { padding: 20px 28px 14px; border-bottom: 1px solid #1e2535; }
+  header h1 { font-size: 1.18rem; font-weight: 700; color: #f7fafc; }
+  header p { margin-top: 4px; font-size: .82rem; color: #94a3b8; }
+
+  .tabs {
+    display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid #1e2535; background: #0d1118;
+    padding: 0 28px; flex-shrink: 0;
+  }
+  .tab-btn {
+    padding: 10px 14px; font-size: .75rem; font-weight: 600; cursor: pointer;
+    border: none; background: transparent; color: #64748b;
+    border-bottom: 2px solid transparent; white-space: nowrap; line-height: 1.4;
+    transition: color .12s, border-color .12s;
+  }
+  .tab-btn:hover { color: #94a3b8; }
+  .tab-btn.active { color: #a5f3fc; border-bottom-color: #a5f3fc; }
+
+  .case-view { display: none; padding: 22px 28px 32px; }
+  .case-view.active { display: block; }
+
+  .query-card {
+    background: #141c2a; border: 1px solid #263352; border-radius: 8px;
+    padding: 13px 16px; margin-bottom: 18px;
+  }
+  .query-label { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: 6px; font-weight: 700; }
+  .query-text { font-size: .88rem; line-height: 1.6; color: #dbeafe; }
+
+  .meta-row {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; align-items: center;
+  }
+  .badge {
+    font-size: .68rem; font-weight: 600; padding: 3px 9px; border-radius: 99px;
+    border: 1px solid; line-height: 1.5; letter-spacing: .02em;
+  }
+  .badge.k { color: #fbbf24; border-color: #78350f; background: #1c1206; }
+  .badge.pin { color: #34d399; border-color: #064e3b; background: #05150f; }
+  .badge.tools { color: #a78bfa; border-color: #3b1d6e; background: #100c1f; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel { background: #141820; border: 1px solid #1e2535; border-radius: 8px; padding: 14px 16px; }
+  .panel-title {
+    font-size: .65rem; text-transform: uppercase; letter-spacing: .08em;
+    color: #64748b; font-weight: 700; margin-bottom: 12px;
+  }
+
+  /* Similarity bars */
+  .tool-row { margin-bottom: 9px; }
+  .tool-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .tool-name {
+    font-size: .75rem; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tool-score { font-size: .72rem; color: #94a3b8; font-variant-numeric: tabular-nums; }
+  .bar-track { height: 6px; background: #1e2535; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .bar-fill.selected { background: #10b981; }
+  .bar-fill.always { background: #3b82f6; }
+  .bar-fill.unselected { background: #334155; }
+  .tool-row.selected .tool-name { color: #6ee7b7; }
+  .tool-row.always .tool-name { color: #93c5fd; }
+  .tool-row.unselected { opacity: .55; }
+
+  .tick { font-size: .7rem; }
+  .tick.yes { color: #10b981; }
+  .tick.pin { color: #3b82f6; }
+  .tick.no { color: #475569; }
+
+  /* Answer panel */
+  .answer-text {
+    font-size: .84rem; line-height: 1.7; color: #cbd5e1; white-space: pre-wrap;
+  }
+  .answer-empty { font-size: .82rem; color: #475569; font-style: italic; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: .72rem; color: #94a3b8; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tool Routing - Embedding Similarity</h1>
+  <p>Each case shows how cosine similarity against exemplar phrases selects a subset of the tool catalog.</p>
+</header>
+<div class="tabs" id="tabs"></div>
+<div id="cases"></div>
+
+<script>
+const D = {"allKeys":["checkNetworkConnectivity","checkVPNStatus","getSystemLogs","checkDiskSpace","getInstalledSoftware","getUserAccount","resetPassword","runDiagnostic","getHardwareInfo","restartService","createSupportTicket","escalateToSpecialist"],"routingLog":[{"label":"Single intent - VPN failure (k=1 exposes only best-match tool)","userPrompt":"Working from the café today and the Cisco client just spins on 'Connecting…' then times out. Office Wi-Fi was fine yesterday.","scores":{"checkNetworkConnectivity":0.6969465071065412,"checkVPNStatus":0.7038104285182665,"getSystemLogs":0.5912591792217466,"checkDiskSpace":0.5102196388645609,"getInstalledSoftware":0.5534441585615556,"getUserAccount":0.5542658869857542,"resetPassword":0.5409878070121305,"runDiagnostic":0.5545277379559526,"getHardwareInfo":0.4785387053335751,"restartService":0.5877934665203883,"createSupportTicket":0.5604814479458632,"escalateToSpecialist":0.6245253184870253},"selectedKeys":["checkVPNStatus"],"alwaysInclude":[],"retrievalK":1,"answer":"The Cisco client is experiencing a connection issue while trying to connect to the network. The status of the VPN client is currently \"Connecting…\", and the connection has timed out. I recommend checking the VPN status and ensuring the network settings are correct. If the issue persists, please check the network connection or contact the network administrator."},{"label":"Single intent - locked account (k=1, different semantic cluster)","userPrompt":"I typed my Windows password incorrectly a few too many times this morning. Now it refuses to accept any credentials at all.","scores":{"checkNetworkConnectivity":0.6177018692590246,"checkVPNStatus":0.7009429597788221,"getSystemLogs":0.6630501161895068,"checkDiskSpace":0.5646141495475187,"getInstalledSoftware":0.5754426463883558,"getUserAccount":0.6870171433652288,"resetPassword":0.7500942025378949,"runDiagnostic":0.5476214394748824,"getHardwareInfo":0.49624582368873654,"restartService":0.6754265958482997,"createSupportTicket":0.5766754922853752,"escalateToSpecialist":0.5924246644703904},"selectedKeys":["resetPassword"],"alwaysInclude":[],"retrievalK":1,"answer":"The issue with the password not accepting any credentials is likely due to the account being locked out. To resolve this, I can reset the password for the user. Please provide the username or email associated with the account."},{"label":"Dual intent - crashing PC: k=2 retrieves logs + hardware diagnostic","userPrompt":"Laptop crashed twice today with a flash of blue then auto-restart. I want to see what errors were recorded AND run a hardware check to rule out a physical fault.","scores":{"checkNetworkConnectivity":0.635862840439379,"checkVPNStatus":0.5008938177275403,"getSystemLogs":0.7610048759943563,"checkDiskSpace":0.5639210651357678,"getInstalledSoftware":0.6179517903563277,"getUserAccount":0.5495207278245929,"resetPassword":0.5343458017163232,"runDiagnostic":0.784178312975138,"getHardwareInfo":0.7150099657005385,"restartService":0.6622925224645524,"createSupportTicket":0.6337239567923793,"escalateToSpecialist":0.5490976454922826},"selectedKeys":["runDiagnostic","getSystemLogs"],"alwaysInclude":[],"retrievalK":2,"answer":"The system logs show several errors, including a kernel power issue and a display driver crash. The hardware diagnostic did not find any issues. Next, review the logs for more details and consider restarting the system to see if the problem persists."},{"label":"Dual intent - disk full + software version: k=2 retrieves both clusters","userPrompt":"The quarterly security patch installer fails immediately with an insufficient-space error. On a separate note, can you confirm which version of Microsoft Office I currently have installed?","scores":{"checkNetworkConnectivity":0.5925217812275627,"checkVPNStatus":0.6160698828990863,"getSystemLogs":0.6094861094529171,"checkDiskSpace":0.7330340474959041,"getInstalledSoftware":0.747848928247211,"getUserAccount":0.5986249404248662,"resetPassword":0.5861684600649583,"runDiagnostic":0.556821780466889,"getHardwareInfo":0.5531866904895906,"restartService":0.6767826990002032,"createSupportTicket":0.5859438734817624,"escalateToSpecialist":0.6249305513960323},"selectedKeys":["getInstalledSoftware","checkDiskSpace"],"alwaysInclude":[],"retrievalK":2,"answer":"The disk space on drive C: is critically full (93%), and cleanup or expansion is required. You currently have Microsoft 365 version 16.0.17231.20194 installed."},{"label":"Dual intent - VPN + locked account, k=1: recall failure (account tool missing)","userPrompt":"My VPN keeps rejecting my authentication since early this morning - I desperately need that tunnel back up for a call. Also, separately, Windows won't accept my login password anymore.","scores":{"checkNetworkConnectivity":0.6523555454420283,"checkVPNStatus":0.764265058234665,"getSystemLogs":0.6030214618260837,"checkDiskSpace":0.5719005292430281,"getInstalledSoftware":0.5464887818218395,"getUserAccount":0.7015661739817517,"resetPassword":0.6971425427356965,"runDiagnostic":0.5393031525043779,"getHardwareInfo":0.48194571491047555,"restartService":0.6481125011308465,"createSupportTicket":0.5903096283816891,"escalateToSpecialist":0.6196754182257287},"selectedKeys":["checkVPNStatus"],"alwaysInclude":[],"retrievalK":1,"answer":"The VPN client is not connected and is showing an authentication timeout error. The profile is \"Corp-HQ\" and the last connection was on May 14, 2026. You should try reconnecting to the VPN or verify your MFA token. For the password issue, please check if there are any account lockout settings or if the password is expired."},{"label":"Dual intent - same query, k=1 + pinned getUserAccount: both intents covered","userPrompt":"My VPN keeps rejecting my authentication since early this morning - I desperately need that tunnel back up for a call. Also, separately, Windows won't accept my login password anymore.","scores":{"checkNetworkConnectivity":0.6523555454420283,"checkVPNStatus":0.764265058234665,"getSystemLogs":0.6030214618260837,"checkDiskSpace":0.5719005292430281,"getInstalledSoftware":0.5464887818218395,"getUserAccount":0.7015661739817517,"resetPassword":0.6971425427356965,"runDiagnostic":0.5393031525043779,"getHardwareInfo":0.48194571491047555,"restartService":0.6481125011308465,"createSupportTicket":0.5903096283816891,"escalateToSpecialist":0.6196754182257287},"selectedKeys":["getUserAccount","checkVPNStatus"],"alwaysInclude":["getUserAccount"],"retrievalK":1,"answer":"The VPN client is not connected and is showing an authentication timeout error. The user account is locked due to exceeding the login attempt limit. \n\nNext steps:  \n1. Reconnect to the VPN to resolve the authentication issue.  \n2. Contact IT support to reset the locked account.  \n3. Verify MFA token status for the user."}]};
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+const tabsEl = document.getElementById("tabs");
+const casesEl = document.getElementById("cases");
+
+D.routingLog.forEach((entry, idx) => {
+  // Tab button
+  const btn = document.createElement("button");
+  btn.className = "tab-btn" + (idx === 0 ? " active" : "");
+  const shortLabel = (idx + 1) + ". " + entry.label.replace(/\(.*?\)/g, "").replace(/-.*$/, "").trim().slice(0, 36);
+  btn.textContent = shortLabel;
+  btn.onclick = () => showCase(idx);
+  tabsEl.appendChild(btn);
+
+  // Case view
+  const view = document.createElement("div");
+  view.className = "case-view" + (idx === 0 ? " active" : "");
+  view.id = "case-" + idx;
+
+  const selectedSet = new Set(entry.selectedKeys);
+  const alwaysSet = new Set(entry.alwaysInclude);
+
+  // Sort tools: selected first, then by score desc
+  const sortedTools = [...D.allKeys].sort((a, b) => {
+    const aS = selectedSet.has(a), bS = selectedSet.has(b);
+    if (aS !== bS) return aS ? -1 : 1;
+    return (D.routingLog[idx].scores[b] || 0) - (D.routingLog[idx].scores[a] || 0);
+  });
+
+  const maxScore = Math.max(...D.allKeys.map(k => entry.scores[k] || 0));
+
+  let barsHtml = "";
+  for (const key of sortedTools) {
+    const sim = entry.scores[key] || 0;
+    const pct = maxScore > 0 ? (sim / maxScore * 100).toFixed(1) : 0;
+    const isAlways = alwaysSet.has(key);
+    const isSel = selectedSet.has(key);
+    const rowCls = isAlways ? "tool-row always" : isSel ? "tool-row selected" : "tool-row unselected";
+    const barCls = isAlways ? "bar-fill always" : isSel ? "bar-fill selected" : "bar-fill unselected";
+    const tickCls = isAlways ? "tick pin" : isSel ? "tick yes" : "tick no";
+    const tickChar = isAlways ? "⊕" : isSel ? "✓" : "·";
+    const pinLabel = isAlways ? '<span style="font-size:.65rem;color:#93c5fd;margin-left:4px">[pinned]</span>' : "";
+
+    barsHtml += '<div class="' + rowCls + '">'
+      + '<div class="tool-header">'
+      + '<span class="tool-name"><span class="' + tickCls + '">' + tickChar + '</span>' + esc(key) + pinLabel + '</span>'
+      + '<span class="tool-score">' + sim.toFixed(4) + '</span>'
+      + '</div>'
+      + '<div class="bar-track"><div class="' + barCls + '" style="width:' + pct + '%"></div></div>'
+      + '</div>';
+  }
+
+  const pinBadge = entry.alwaysInclude.length
+    ? '<span class="badge pin">pinned: ' + esc(entry.alwaysInclude.join(", ")) + '</span>' : "";
+
+  view.innerHTML =
+    '<div class="query-card"><div class="query-label">User request</div>'
+    + '<div class="query-text">' + esc(entry.userPrompt) + '</div></div>'
+    + '<div class="meta-row">'
+    + '<span class="badge k">k = ' + entry.retrievalK + '</span>'
+    + pinBadge
+    + '<span class="badge tools">' + entry.selectedKeys.length + ' / ' + D.allKeys.length + ' tools exposed</span>'
+    + '</div>'
+    + '<div class="legend">'
+    + '<span class="leg"><span class="leg-dot" style="background:#10b981"></span>Retrieved by similarity</span>'
+    + '<span class="leg"><span class="leg-dot" style="background:#3b82f6"></span>Always-include (pinned)</span>'
+    + '<span class="leg"><span class="leg-dot" style="background:#334155;opacity:.55"></span>Not exposed</span>'
+    + '</div>'
+    + '<div class="grid">'
+    + '<div class="panel"><div class="panel-title">Similarity scores (normalised to top match)</div>' + barsHtml + '</div>'
+    + '<div class="panel"><div class="panel-title">Assistant response</div>'
+    + (entry.answer
+        ? '<div class="answer-text">' + esc(entry.answer) + '</div>'
+        : '<div class="answer-empty">No response captured.</div>')
+    + '</div>'
+    + '</div>';
+
+  casesEl.appendChild(view);
+});
+
+function showCase(idx) {
+  document.querySelectorAll(".tab-btn").forEach((b, i) => b.classList.toggle("active", i === idx));
+  document.querySelectorAll(".case-view").forEach((v, i) => v.classList.toggle("active", i === idx));
+}
+</script>
+</body>
+</html>

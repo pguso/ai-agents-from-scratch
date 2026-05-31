@@ -370,3 +370,5 @@ ReAct transforms LLMs from:
 - **Isolated models** → Tool-using agents
 
 It's the bridge between language models and autonomous agents that can actually accomplish complex tasks reliably.
+
+If the tool registry grows large, you can **pre-filter** which tools appear in each ReAct iteration (for example with embedding similarity over exemplar phrases); see [Example 15: tool routing with embeddings](../15_tool-routing-embeddings/CONCEPT.md).

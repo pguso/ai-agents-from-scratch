@@ -40,7 +40,7 @@ const systemPrompt = `You are an expert logical and quantitative reasoner.
     Your goal is to analyze real-world word problems involving families, quantities, averages, and relationships 
     between entities, and compute the exact numeric answer.
     
-    Goal: Return the correct final number as a single value — no explanation, no reasoning steps, just the answer.
+    Goal: Return the correct final number as a single value - no explanation, no reasoning steps, just the answer.
     `
 ```
 
@@ -53,7 +53,7 @@ const systemPrompt = `You are an expert logical and quantitative reasoner.
    - Tells the model what type of problems to expect
    - Primes it for complex counting and calculation tasks
 
-3. **Output Constraint**: "Return the correct final number as a single value — no explanation"
+3. **Output Constraint**: "Return the correct final number as a single value - no explanation"
    - Forces concise output
    - Just the answer, not the work
 

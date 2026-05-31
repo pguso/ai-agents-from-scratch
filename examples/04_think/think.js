@@ -21,7 +21,7 @@ const systemPrompt = `You are an expert logical and quantitative reasoner.
     Your goal is to analyze real-world word problems involving families, quantities, averages, and relationships 
     between entities, and compute the exact numeric answer.
     
-    Goal: Return the correct final number as a single value — no explanation, no reasoning steps, just the answer.
+    Goal: Return the correct final number as a single value - no explanation, no reasoning steps, just the answer.
     `
 const context = await model.createContext();
 const session = new LlamaChatSession({

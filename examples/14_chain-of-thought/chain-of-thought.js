@@ -1,5 +1,5 @@
 /**
- * Example 14: Chain of Thought (CoT) — Return decision
+ * Example 14: Chain of Thought (CoT) - Return decision
  *
  * Run:
  *   node examples/14_chain-of-thought/chain-of-thought.js

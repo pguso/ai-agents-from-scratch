@@ -1,5 +1,5 @@
 /**
- * Example 12: Tree of Thought (ToT) — Motivation analysis
+ * Example 12: Tree of Thought (ToT) - Motivation analysis
  *
  * Run:
  *   node examples/12_tree-of-thought/tree-of-thought.js
